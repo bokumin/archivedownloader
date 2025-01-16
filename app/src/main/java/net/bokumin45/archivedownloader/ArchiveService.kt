@@ -23,7 +23,6 @@ interface ArchiveService {
         }
     }
 }
-data class MetadataResponse(
-    val files: List<ArchiveFile>
-)
+
+
 

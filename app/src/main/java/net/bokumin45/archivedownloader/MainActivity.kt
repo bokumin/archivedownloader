@@ -1,21 +1,25 @@
 package net.bokumin45.archivedownloader
 
 import android.os.Bundle
+import android.view.MenuItem
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import net.bokumin45.archivedownloader.databinding.ActivityMainBinding
-import net.bokumin45.archivedownloader.repository.ArchiveRepository
 import kotlinx.coroutines.launch
+import net.bokumin45.archivedownloader.repository.ArchiveRepository
 import retrofit2.Retrofit
 import retrofit2.converter.scalars.ScalarsConverterFactory
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var viewModel: MainViewModel
-    private val adapter = ArchiveAdapter()
+    private val categoryAdapter = CategoryAdapter { category ->
+        showCategoryItems(category)
+    }
+    private val itemAdapter = ArchiveAdapter()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,14 +47,20 @@ class MainActivity : AppCompatActivity() {
     private fun setupRecyclerView() {
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
-            adapter = this@MainActivity.adapter
+            adapter = categoryAdapter
         }
     }
 
     private fun observeViewModel() {
         lifecycleScope.launch {
-            viewModel.items.collect { items ->
-                adapter.submitList(items)
+            viewModel.categories.collect { categories ->
+                categoryAdapter.submitList(categories)
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.selectedCategoryItems.collect { items ->
+                itemAdapter.submitList(items)
             }
         }
 
@@ -63,9 +73,32 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.error.collect { error ->
                 error?.let {
-                    // エラーメッセージを表示する処理を追加
+                    // エラー処理
                 }
             }
+        }
+    }
+
+    private fun showCategoryItems(category: ArchiveCategory) {
+        binding.recyclerView.adapter = itemAdapter
+        viewModel.selectCategory(category)
+        supportActionBar?.apply {
+            title = category.name
+            setDisplayHomeAsUpEnabled(true)
+        }
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            android.R.id.home -> {
+                binding.recyclerView.adapter = categoryAdapter
+                supportActionBar?.apply {
+                    title = getString(R.string.app_name)
+                    setDisplayHomeAsUpEnabled(false)
+                }
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
     }
 }
