@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.archivedownloader"
+    namespace = "net.bokumin45.archivedownloader"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.archivedownloader"
+        applicationId = "net.bokumin45.archivedownloader"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
