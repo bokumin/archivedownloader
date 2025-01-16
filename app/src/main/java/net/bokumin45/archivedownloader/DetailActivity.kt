@@ -2,12 +2,12 @@ package net.bokumin45.archivedownloader
 
 import ArchiveFileAdapter
 import android.app.DownloadManager
-import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.view.View
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -44,13 +44,26 @@ class DetailActivity : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         fileAdapter = ArchiveFileAdapter { file ->
-            downloadFile(file)
+            showDownloadConfirmationDialog(file)
         }
 
         binding.fileList.apply {
             layoutManager = LinearLayoutManager(this@DetailActivity)
             adapter = fileAdapter
         }
+    }
+
+    private fun showDownloadConfirmationDialog(file: ArchiveFile) {
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.download_confirmation_title))
+            .setMessage(getString(R.string.download_confirmation_message, file.name))
+            .setPositiveButton(getString(R.string.yes)) { _, _ ->
+                downloadFile(file)
+            }
+            .setNegativeButton(getString(R.string.no)) { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
     }
 
     private fun loadMetadata() {

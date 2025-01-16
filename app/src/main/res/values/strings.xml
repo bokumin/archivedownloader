@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">archivedownloader</string>
+    <string name="download_confirmation_title">Confirm</string>
+    <string name="download_confirmation_message">file:%s?</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
 </resources>
