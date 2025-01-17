@@ -28,15 +28,43 @@ class MainViewModel(private val repository: ArchiveRepository) : ViewModel() {
                 _error.value = null
                 val items = repository.getLatestUploads()
 
-                val latestCategory = ArchiveCategory("latest", items)
+                // メインカテゴリーでグループ化
+                val categoryGroups = items.groupBy { it.mainCategory }
 
-                val groupedItems = items.groupBy {
-                    it.category.substringBefore('/')
-                }
+                // 各メインカテゴリーのサブカテゴリーを作成
+                val mainCategories = categoryGroups.map { (categoryName, categoryItems) ->
+                    // サブカテゴリーでグループ化
+                    val subCategoryGroups = categoryItems
+                        .filter { it.subCategory.isNotEmpty() }
+                        .groupBy { it.subCategory }
 
-                _categories.value = listOf(latestCategory) + groupedItems.map { (category, categoryItems) ->
-                    ArchiveCategory(category, categoryItems)
+                    // サブカテゴリーを作成
+                    val subCategories = subCategoryGroups.map { (subName, subItems) ->
+                        ArchiveCategory(
+                            name = "$categoryName/$subName",
+                            items = subItems,
+                            parent = categoryName
+                        )
+                    }.sortedBy { it.name }
+
+                    // メインカテゴリーを作成（サブカテゴリーがないアイテムも含める）
+                    ArchiveCategory(
+                        name = categoryName,
+                        items = categoryItems.filter { it.subCategory.isEmpty() },
+                        subCategories = subCategories,
+                        parent = "latest"
+                    )
                 }.sortedBy { it.name }
+
+                // Latest カテゴリーを作成
+                val latestCategory = ArchiveCategory(
+                    name = "latest",
+                    items = items,
+                    subCategories = mainCategories,
+                    parent = null
+                )
+
+                _categories.value = listOf(latestCategory)
             } catch (e: Exception) {
                 Log.e("MainViewModel", "Error fetching uploads", e)
                 _error.value = e.message ?: "Unknown error occurred"

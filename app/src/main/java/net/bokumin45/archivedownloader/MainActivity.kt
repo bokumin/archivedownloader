@@ -54,7 +54,7 @@ class MainActivity : AppCompatActivity() {
     private fun observeViewModel() {
         lifecycleScope.launch {
             viewModel.categories.collect { categories ->
-                categoryAdapter.submitList(categories)
+                categoryAdapter.submitCategoryList(categories)  // submitList()から変更
             }
         }
 
@@ -73,12 +73,10 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.error.collect { error ->
                 error?.let {
-                    // エラー処理
                 }
             }
         }
     }
-
     private fun showCategoryItems(category: ArchiveCategory) {
         binding.recyclerView.adapter = itemAdapter
         viewModel.selectCategory(category)

@@ -10,7 +10,14 @@ import androidx.recyclerview.widget.RecyclerView
 
 class CategoryAdapter(
     private val onCategoryClick: (ArchiveCategory) -> Unit
-) : ListAdapter<ArchiveCategory, CategoryAdapter.ViewHolder>(CategoryDiffCallback()) {
+) : ListAdapter<CategoryAdapter.CategoryListItem, CategoryAdapter.ViewHolder>(CategoryDiffCallback()) {
+
+    sealed class CategoryListItem {
+        data class CategoryItem(
+            val category: ArchiveCategory,
+            val level: Int = 0
+        ) : CategoryListItem()
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -19,28 +26,56 @@ class CategoryAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val category = getItem(position)
-        holder.bind(category)
+        holder.bind(getItem(position))
+    }
+
+    fun submitCategoryList(categories: List<ArchiveCategory>) {
+        val flattenedList = flattenCategories(categories)
+        submitList(flattenedList)
+    }
+
+    private fun flattenCategories(
+        categories: List<ArchiveCategory>,
+        level: Int = 0
+    ): List<CategoryListItem> {
+        return categories.flatMap { category ->
+            listOf(CategoryListItem.CategoryItem(category, level)) +
+                    flattenCategories(category.subCategories, level + 1)
+        }
     }
 
     inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         private val textView: TextView = view.findViewById(android.R.id.text1)
 
-        fun bind(category: ArchiveCategory) {
-            val displayName = if (category.name == "latest") {
-                "latest (${category.items.size})"
-            } else {
-                "${category.displayName} (${category.items.size})"
+        fun bind(item: CategoryListItem) {
+            when (item) {
+                is CategoryListItem.CategoryItem -> {
+                    val category = item.category
+                    val indent = "  ".repeat(item.level)
+                    val displayName = buildString {
+                        append(indent)
+                        append(category.displayName)
+                        append(" (${category.totalItemCount})")
+                    }
+                    textView.text = displayName
+                    itemView.setOnClickListener { onCategoryClick(category) }
+                }
             }
-            textView.text = displayName
-            itemView.setOnClickListener { onCategoryClick(category) }
         }
     }
 
-    private class CategoryDiffCallback : DiffUtil.ItemCallback<ArchiveCategory>() {
-        override fun areItemsTheSame(oldItem: ArchiveCategory, newItem: ArchiveCategory) =
-            oldItem.name == newItem.name
-        override fun areContentsTheSame(oldItem: ArchiveCategory, newItem: ArchiveCategory) =
-            oldItem == newItem
+    private class CategoryDiffCallback : DiffUtil.ItemCallback<CategoryListItem>() {
+        override fun areItemsTheSame(oldItem: CategoryListItem, newItem: CategoryListItem): Boolean {
+            return when {
+                oldItem is CategoryListItem.CategoryItem && newItem is CategoryListItem.CategoryItem ->
+                    oldItem.category.name == newItem.category.name &&
+                            oldItem.level == newItem.level
+                else -> false
+            }
+        }
+
+        override fun areContentsTheSame(oldItem: CategoryListItem, newItem: CategoryListItem): Boolean {
+            return oldItem == newItem
+        }
     }
 }

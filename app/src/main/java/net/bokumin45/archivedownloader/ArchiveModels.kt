@@ -2,9 +2,12 @@ package net.bokumin45.archivedownloader
 
 data class ArchiveCategory(
     val name: String,
-    val items: List<ArchiveItem>
+    val items: List<ArchiveItem>,
+    val subCategories: List<ArchiveCategory> = emptyList(),
+    val parent: String? = null
 ) {
-    val displayName: String get() = name.substringBefore('/')
+    val displayName: String get() = name.substringAfterLast('/')
+    val totalItemCount: Int get() = items.size + subCategories.sumOf { it.totalItemCount }
 }
 
 data class ArchiveItem(
@@ -15,6 +18,12 @@ data class ArchiveItem(
 ) {
     val thumbnailUrl: String
         get() = "${ArchiveService.BASE_URL}services/img/$identifier"
+
+    val mainCategory: String
+        get() = category.substringBefore('/')
+
+    val subCategory: String
+        get() = category.substringAfter('/', "")
 }
 
 data class ArchiveFile(
