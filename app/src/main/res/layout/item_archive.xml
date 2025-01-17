@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="12dp"
@@ -49,6 +50,17 @@
             app:layout_constraintStart_toEndOf="@id/thumbnailImageView"
             app:layout_constraintTop_toBottomOf="@id/titleTextView" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+        <ImageButton
+            android:id="@+id/favoriteButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="6dp"
+            app:srcCompat="@drawable/ic_favorite_border"
+            app:layout_constraintStart_toEndOf="@id/categoryTextView"
+            app:layout_constraintTop_toBottomOf="@id/titleTextView"
+            tools:ignore="MissingConstraints" />
 
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.material.card.MaterialCardView>

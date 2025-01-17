@@ -4,12 +4,15 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.widget.SearchView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.navigation.NavigationView
 import net.bokumin45.archivedownloader.databinding.ActivityMainBinding
 import kotlinx.coroutines.launch
 import net.bokumin45.archivedownloader.repository.ArchiveRepository
@@ -19,37 +22,76 @@ import retrofit2.converter.scalars.ScalarsConverterFactory
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
-
     private lateinit var viewModel: MainViewModel
     private lateinit var searchView: SearchView
     private var isSearchActive = false
+    private lateinit var drawerLayout: DrawerLayout
+    private lateinit var navigationView: NavigationView
 
     private val categoryAdapter = CategoryAdapter { category ->
         showCategoryItems(category)
     }
-    private val itemAdapter = ArchiveAdapter()
+
+    private val itemAdapter = ArchiveAdapter(
+        onFavoriteClick = { item -> viewModel.toggleFavorite(item) },
+        isFavorite = { identifier -> viewModel.isFavorite(identifier) }
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        setSupportActionBar(binding.toolbar)
+        setupDrawer()
         setupRetrofitAndViewModel()
         setupRecyclerView()
         observeViewModel()
         viewModel.fetchLatestUploads()
     }
 
+    private fun setupDrawer() {
+        drawerLayout = binding.drawerLayout
+        navigationView = binding.navigationView
+
+        val toggle = ActionBarDrawerToggle(
+            this,
+            drawerLayout,
+            binding.toolbar,
+            R.string.navigation_drawer_open,
+            R.string.navigation_drawer_close
+        )
+        drawerLayout.addDrawerListener(toggle)
+        toggle.syncState()
+
+        navigationView.setNavigationItemSelectedListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.nav_favorites -> {
+                    showFavorites()
+                    drawerLayout.closeDrawers()
+                    true
+                }
+                R.id.nav_home -> {
+                    showHome()
+                    drawerLayout.closeDrawers()
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
     private fun setupRetrofitAndViewModel() {
         val retrofit = Retrofit.Builder()
             .baseUrl(ArchiveService.BASE_URL)
             .addConverterFactory(ScalarsConverterFactory.create())
-            .addConverterFactory(GsonConverterFactory.create()) // JSONパース用に追加
+            .addConverterFactory(GsonConverterFactory.create())
             .build()
 
         val archiveService = retrofit.create(ArchiveService::class.java)
         val repository = ArchiveRepository(archiveService)
-        val viewModelFactory = MainViewModelFactory(repository)
+        val favoriteManager = FavoriteManager(this)
+        val viewModelFactory = MainViewModelFactory(repository, favoriteManager)
         viewModel = ViewModelProvider(this, viewModelFactory)[MainViewModel::class.java]
 
         lifecycleScope.launch {
@@ -84,16 +126,25 @@ class MainActivity : AppCompatActivity() {
             })
         }
     }
+
     private fun observeViewModel() {
         lifecycleScope.launch {
             viewModel.categories.collect { categories ->
-                categoryAdapter.submitCategoryList(categories)  // submitList()から変更
+                categoryAdapter.submitCategoryList(categories)
             }
         }
 
         lifecycleScope.launch {
             viewModel.selectedCategoryItems.collect { items ->
                 itemAdapter.submitList(items)
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.favoriteItems.collect { items ->
+                if (!isSearchActive) {
+                    itemAdapter.submitList(items)
+                }
             }
         }
 
@@ -106,10 +157,12 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.error.collect { error ->
                 error?.let {
+                    // エラー処理をここに実装
                 }
             }
         }
     }
+
     private fun showCategoryItems(category: ArchiveCategory) {
         binding.recyclerView.adapter = itemAdapter
         viewModel.selectCategory(category)
@@ -119,19 +172,38 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun showFavorites() {
+        binding.recyclerView.adapter = itemAdapter
+        viewModel.loadFavorites()
+        supportActionBar?.apply {
+            title = "Favorites"
+            setDisplayHomeAsUpEnabled(true)
+        }
+    }
+
+    private fun showHome() {
+        binding.recyclerView.adapter = categoryAdapter
+        viewModel.fetchLatestUploads()
+        supportActionBar?.apply {
+            title = getString(R.string.app_name)
+            setDisplayHomeAsUpEnabled(false)
+        }
+    }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             android.R.id.home -> {
-                binding.recyclerView.adapter = categoryAdapter
-                supportActionBar?.apply {
-                    title = getString(R.string.app_name)
-                    setDisplayHomeAsUpEnabled(false)
+                if (drawerLayout.isDrawerOpen(navigationView)) {
+                    drawerLayout.closeDrawer(navigationView)
+                } else {
+                    showHome()
                 }
                 true
             }
             else -> super.onOptionsItemSelected(item)
         }
     }
+
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main_menu, menu)
 

@@ -9,7 +9,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import net.bokumin45.archivedownloader.repository.ArchiveRepository
 
-class MainViewModel(private val repository: ArchiveRepository) : ViewModel() {
+class MainViewModel(
+    private val repository: ArchiveRepository,
+    private val favoriteManager: FavoriteManager
+    ) : ViewModel() {
     private val _categories = MutableStateFlow<List<ArchiveCategory>>(emptyList())
     val categories: StateFlow<List<ArchiveCategory>> = _categories
 
@@ -24,6 +27,26 @@ class MainViewModel(private val repository: ArchiveRepository) : ViewModel() {
 
     private val _searchResults = MutableStateFlow<List<ArchiveItem>>(emptyList())
     val searchResults: StateFlow<List<ArchiveItem>> = _searchResults
+
+    private val _favoriteItems = MutableStateFlow<List<ArchiveItem>>(emptyList())
+    val favoriteItems: StateFlow<List<ArchiveItem>> = _favoriteItems
+
+    fun toggleFavorite(item: ArchiveItem) {
+        if (favoriteManager.isFavorite(item.identifier)) {
+            favoriteManager.removeFavorite(item)
+        } else {
+            favoriteManager.addFavorite(item)
+        }
+        loadFavorites()
+    }
+
+    fun loadFavorites() {
+        _favoriteItems.value = favoriteManager.getFavorites().toList()
+    }
+
+    fun isFavorite(identifier: String): Boolean {
+        return favoriteManager.isFavorite(identifier)
+    }
 
     private var currentSearchJob: Job? = null
     private var currentPage = 1

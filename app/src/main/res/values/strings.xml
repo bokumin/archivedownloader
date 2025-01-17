@@ -6,4 +6,6 @@
     <string name="no">No</string>
     <string name="search">Search</string>
     <string name="search_hint">Input Search hint</string>
+    <string name="navigation_drawer_open">Open</string>
+    <string name="navigation_drawer_close">Close</string>
 </resources>
