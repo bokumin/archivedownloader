@@ -58,7 +58,17 @@ class CategoryAdapter(
                         append(" (${category.totalItemCount})")
                     }
                     textView.text = displayName
-                    itemView.setOnClickListener { onCategoryClick(category) }
+                    // カテゴリーに子カテゴリーがある場合は、子カテゴリーを含むアイテムすべてを表示
+                    itemView.setOnClickListener {
+                        if (category.subCategories.isNotEmpty()) {
+                            // サブカテゴリーを含むすべてのアイテムを表示
+                            val allItems = category.items +
+                                    category.subCategories.flatMap { it.items }
+                            onCategoryClick(category.copy(items = allItems))
+                        } else {
+                            onCategoryClick(category)
+                        }
+                    }
                 }
             }
         }

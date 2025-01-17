@@ -3,6 +3,7 @@ package net.bokumin45.archivedownloader
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -20,6 +21,58 @@ class MainViewModel(private val repository: ArchiveRepository) : ViewModel() {
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
+
+    private val _searchResults = MutableStateFlow<List<ArchiveItem>>(emptyList())
+    val searchResults: StateFlow<List<ArchiveItem>> = _searchResults
+
+    private var currentSearchJob: Job? = null
+    private var currentPage = 1
+    private var isLastPage = false
+    private var currentQuery = ""
+
+    fun search(query: String, resetPage: Boolean = true) {
+        if (resetPage) {
+            currentPage = 1
+            isLastPage = false
+            _searchResults.value = emptyList()
+        }
+
+        if (query.isBlank()) {
+            _searchResults.value = emptyList()
+            return
+        }
+
+        currentQuery = query
+        currentSearchJob?.cancel()
+        currentSearchJob = viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                val response = repository.searchItems(query, currentPage)
+
+                val newItems = response.response.docs.map { it.toArchiveItem() }
+                if (resetPage) {
+                    _searchResults.value = newItems
+                } else {
+                    _searchResults.value = _searchResults.value + newItems
+                }
+
+                isLastPage = newItems.isEmpty() ||
+                        response.response.start + response.response.docs.size >= response.response.numFound
+
+            } catch (e: Exception) {
+                _error.value = "Search failed: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun loadNextSearchPage() {
+        if (!isLastPage && !_isLoading.value) {
+            currentPage++
+            search(currentQuery, false)
+        }
+    }
 
     fun fetchLatestUploads() {
         viewModelScope.launch {

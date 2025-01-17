@@ -3,6 +3,7 @@ package net.bokumin45.archivedownloader.repository
 import android.util.Log
 import net.bokumin45.archivedownloader.ArchiveItem
 import net.bokumin45.archivedownloader.ArchiveService
+import net.bokumin45.archivedownloader.SearchResponse
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
 
@@ -77,5 +78,14 @@ class ArchiveRepository(private val archiveService: ArchiveService) {
 
         Log.d("ArchiveRepository", "Total items found: ${items.size}")
         return items
+    }
+
+    suspend fun searchItems(query: String, page: Int): SearchResponse {
+        return archiveService.searchItems(
+            query = query,
+            fields = listOf("identifier", "title", "mediatype"),
+            rows = 50,
+            page = page
+        )
     }
 }

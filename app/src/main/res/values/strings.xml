@@ -4,4 +4,6 @@
     <string name="download_confirmation_message">file:%s?</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
+    <string name="search">Search</string>
+    <string name="search_hint">Input Search hint</string>
 </resources>

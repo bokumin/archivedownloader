@@ -50,3 +50,26 @@ data class ArchiveMetadata(
     val addeddate: String = "",
     val uploader: String = ""
 )
+
+data class SearchResponse(
+    val response: SearchResponseData
+)
+
+data class SearchResponseData(
+    val numFound: Int,
+    val start: Int,
+    val docs: List<SearchDoc>
+)
+
+data class SearchDoc(
+    val identifier: String,
+    val title: String,
+    val mediatype: String
+) {
+    fun toArchiveItem(): ArchiveItem = ArchiveItem(
+        title = title,
+        link = "${ArchiveService.BASE_URL}details/$identifier",
+        category = mediatype,
+        identifier = identifier
+    )
+}

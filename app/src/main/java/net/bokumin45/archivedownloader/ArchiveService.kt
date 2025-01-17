@@ -3,12 +3,22 @@ package net.bokumin45.archivedownloader
 import retrofit2.http.GET
 import retrofit2.http.Headers
 import retrofit2.http.Path
+import retrofit2.http.Query
 import retrofit2.http.Url
 
 interface ArchiveService {
     @GET("services/collection-rss.php")
     @Headers("Accept: application/xml")
     suspend fun getLatestUploads(): String
+
+    @GET("advancedsearch.php")
+    suspend fun searchItems(
+        @Query("q") query: String,
+        @Query("output") output: String = "json",
+        @Query("fl[]") fields: List<String> = listOf("identifier", "title", "mediatype"),
+        @Query("rows") rows: Int = 50,
+        @Query("page") page: Int = 1
+    ): SearchResponse
 
     @GET("metadata/{identifier}")
     suspend fun getMetadata(@Path("identifier") identifier: String): MetadataResponse
