@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.widget.SearchView
 import androidx.appcompat.app.AppCompatActivity
@@ -28,21 +29,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navigationView: NavigationView
     private lateinit var toggle: ActionBarDrawerToggle
-    private enum class DisplayState {
-        HOME,
-        CATEGORY,
-        FAVORITES,
-        SEARCH
-    }
-
-    private var currentState = DisplayState.HOME
 
     private val categoryAdapter = CategoryAdapter { category ->
         showCategoryItems(category)
     }
 
     private val itemAdapter = ArchiveAdapter(
-        onFavoriteClick = { item -> viewModel.toggleFavorite(item) },
+        onFavoriteClick = { item ->
+            viewModel.toggleFavorite(item)
+        },
         isFavorite = { identifier -> viewModel.isFavorite(identifier) }
     )
 
@@ -56,7 +51,8 @@ class MainActivity : AppCompatActivity() {
         setupRetrofitAndViewModel()
         setupRecyclerView()
         observeViewModel()
-        viewModel.fetchLatestUploads()
+
+        showHome()
     }
 
     private fun setupDrawer() {
@@ -102,21 +98,11 @@ class MainActivity : AppCompatActivity() {
         val favoriteManager = FavoriteManager(this)
         val viewModelFactory = MainViewModelFactory(repository, favoriteManager)
         viewModel = ViewModelProvider(this, viewModelFactory)[MainViewModel::class.java]
-
-        lifecycleScope.launch {
-            viewModel.searchResults.collect { results ->
-                if (isSearchActive) {
-                    itemAdapter.submitList(results)
-                    binding.recyclerView.adapter = itemAdapter
-                }
-            }
-        }
     }
 
     private fun setupRecyclerView() {
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
-            adapter = categoryAdapter
             addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                     super.onScrolled(recyclerView, dx, dy)
@@ -138,21 +124,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun observeViewModel() {
         lifecycleScope.launch {
-            viewModel.categories.collect { categories ->
-                categoryAdapter.submitCategoryList(categories)
-            }
-        }
-
-        lifecycleScope.launch {
-            viewModel.selectedCategoryItems.collect { items ->
-                itemAdapter.submitList(items)
-            }
-        }
-
-        lifecycleScope.launch {
-            viewModel.favoriteItems.collect { items ->
-                if (!isSearchActive) {
-                    itemAdapter.submitList(items)
+            viewModel.currentItems.collect { items ->
+                when (items.firstOrNull()) {
+                    is ArchiveCategory -> {
+                        binding.recyclerView.adapter = categoryAdapter
+                        categoryAdapter.submitCategoryList(items as List<ArchiveCategory>)
+                    }
+                    is ArchiveItem -> {
+                        binding.recyclerView.adapter = itemAdapter
+                        itemAdapter.submitList(items as List<ArchiveItem>)
+                    }
                 }
             }
         }
@@ -166,45 +147,37 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.error.collect { error ->
                 error?.let {
-                    // エラー処理をここに実装
+                    Toast.makeText(this@MainActivity, it, Toast.LENGTH_LONG).show()
                 }
             }
         }
     }
 
-
     private fun showCategoryItems(category: ArchiveCategory) {
-        if (currentState != DisplayState.CATEGORY) {
-            binding.recyclerView.adapter = itemAdapter
-        }
-        currentState = DisplayState.CATEGORY
+        viewModel.setDisplayState(DisplayState.CATEGORY)
         viewModel.selectCategory(category)
-        supportActionBar?.apply {
-            title = category.name
-        }
+        supportActionBar?.title = category.name
     }
 
     private fun showFavorites() {
-        if (currentState != DisplayState.FAVORITES) {
-            binding.recyclerView.adapter = itemAdapter
-        }
-        currentState = DisplayState.FAVORITES
-        viewModel.loadFavorites()
-        supportActionBar?.apply {
-            title = "Favorites"
-        }
+        viewModel.setDisplayState(DisplayState.FAVORITES)
+        supportActionBar?.title = "Favorites"
     }
 
     private fun showHome() {
-        if (currentState != DisplayState.HOME) {
-            binding.recyclerView.adapter = categoryAdapter
-        }
-        currentState = DisplayState.HOME
+        viewModel.setDisplayState(DisplayState.HOME)
         viewModel.fetchLatestUploads()
-        supportActionBar?.apply {
-            title = getString(R.string.app_name)
-        }
+        supportActionBar?.title = getString(R.string.app_name)
     }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        val searchItem = menu.findItem(R.id.action_search)
+        searchView = searchItem.actionView as SearchView
+        setupSearchView()
+        return true
+    }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (toggle.onOptionsItemSelected(item)) {
             return true
@@ -212,25 +185,11 @@ class MainActivity : AppCompatActivity() {
         return super.onOptionsItemSelected(item)
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.main_menu, menu)
-
-        val searchItem = menu.findItem(R.id.action_search)
-        searchView = searchItem.actionView as SearchView
-
-        setupSearchView()
-        return true
-    }
-
-
     private fun setupSearchView() {
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 query?.let {
-                    if (currentState != DisplayState.SEARCH) {
-                        binding.recyclerView.adapter = itemAdapter
-                    }
-                    currentState = DisplayState.SEARCH
+                    viewModel.setDisplayState(DisplayState.SEARCH)
                     isSearchActive = true
                     viewModel.search(it)
                     searchView.clearFocus()
@@ -239,33 +198,20 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onQueryTextChange(newText: String?): Boolean {
-                if (newText.isNullOrBlank()) {
-                    when (currentState) {
-                        DisplayState.HOME -> showHome()
-                        DisplayState.FAVORITES -> showFavorites()
-                        DisplayState.CATEGORY -> {
-                            viewModel.getLastSelectedCategory()?.let { showCategoryItems(it) }
-                        }
-                        DisplayState.SEARCH -> showHome()
-                    }
+                if (newText.isNullOrBlank() && isSearchActive) {
                     isSearchActive = false
+                    showHome()
                 }
                 return true
             }
         })
 
         searchView.setOnCloseListener {
-            when (currentState) {
-                DisplayState.HOME -> showHome()
-                DisplayState.FAVORITES -> showFavorites()
-                DisplayState.CATEGORY -> {
-                    viewModel.getLastSelectedCategory()?.let { showCategoryItems(it) }
-                }
-                DisplayState.SEARCH -> showHome()
+            if (isSearchActive) {
+                isSearchActive = false
+                showHome()
             }
-            isSearchActive = false
             false
         }
     }
-
 }

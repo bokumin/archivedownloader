@@ -13,6 +13,12 @@ class MainViewModel(
     private val repository: ArchiveRepository,
     private val favoriteManager: FavoriteManager
 ) : ViewModel() {
+    private val _displayState = MutableStateFlow(DisplayState.HOME)
+    val displayState: StateFlow<DisplayState> = _displayState
+
+    private val _currentItems = MutableStateFlow<List<Any>>(emptyList())
+    val currentItems: StateFlow<List<Any>> = _currentItems
+
     private val _categories = MutableStateFlow<List<ArchiveCategory>>(emptyList())
     val categories: StateFlow<List<ArchiveCategory>> = _categories
 
@@ -32,7 +38,33 @@ class MainViewModel(
     val favoriteItems: StateFlow<List<ArchiveItem>> = _favoriteItems
 
     private var lastSelectedCategory: ArchiveCategory? = null
+    private var currentSearchJob: Job? = null
+    private var currentPage = 1
+    private var isLastPage = false
+    private var currentQuery = ""
+
     fun getLastSelectedCategory(): ArchiveCategory? = lastSelectedCategory
+
+    fun setDisplayState(newState: DisplayState) {
+        viewModelScope.launch {
+            _displayState.value = newState
+            when (newState) {
+                DisplayState.HOME -> {
+                    _currentItems.value = _categories.value
+                }
+                DisplayState.FAVORITES -> {
+                    loadFavorites()
+                    _currentItems.value = _favoriteItems.value
+                }
+                DisplayState.CATEGORY -> {
+                    _currentItems.value = _selectedCategoryItems.value
+                }
+                DisplayState.SEARCH -> {
+                    _currentItems.value = _searchResults.value
+                }
+            }
+        }
+    }
 
     fun toggleFavorite(item: ArchiveItem) {
         if (favoriteManager.isFavorite(item.identifier)) {
@@ -40,23 +72,20 @@ class MainViewModel(
         } else {
             favoriteManager.addFavorite(item)
         }
-        if (_favoriteItems.value.isNotEmpty()) {
-            loadFavorites()
-        }
+        loadFavorites()
     }
 
     fun loadFavorites() {
-        _favoriteItems.value = favoriteManager.getFavorites().toList()
+        val favorites = favoriteManager.getFavorites().toList()
+        _favoriteItems.value = favorites
+        if (_displayState.value == DisplayState.FAVORITES) {
+            _currentItems.value = favorites
+        }
     }
 
     fun isFavorite(identifier: String): Boolean {
         return favoriteManager.isFavorite(identifier)
     }
-
-    private var currentSearchJob: Job? = null
-    private var currentPage = 1
-    private var isLastPage = false
-    private var currentQuery = ""
 
     fun search(query: String, resetPage: Boolean = true) {
         if (resetPage) {
@@ -76,12 +105,16 @@ class MainViewModel(
             try {
                 _isLoading.value = true
                 val response = repository.searchItems(query, currentPage)
-
                 val newItems = response.response.docs.map { it.toArchiveItem() }
+
                 if (resetPage) {
                     _searchResults.value = newItems
                 } else {
                     _searchResults.value = _searchResults.value + newItems
+                }
+
+                if (_displayState.value == DisplayState.SEARCH) {
+                    _currentItems.value = _searchResults.value
                 }
 
                 isLastPage = newItems.isEmpty() ||
@@ -110,7 +143,6 @@ class MainViewModel(
                 val items = repository.getLatestUploads()
 
                 val categoryGroups = items.groupBy { it.mainCategory }
-
                 val mainCategories = categoryGroups.map { (categoryName, categoryItems) ->
                     val subCategoryGroups = categoryItems
                         .filter { it.subCategory.isNotEmpty() }
@@ -140,8 +172,10 @@ class MainViewModel(
                 )
 
                 _categories.value = listOf(latestCategory)
+                if (_displayState.value == DisplayState.HOME) {
+                    _currentItems.value = _categories.value
+                }
             } catch (e: Exception) {
-                Log.e("MainViewModel", "Error fetching uploads", e)
                 _error.value = e.message ?: "Unknown error occurred"
                 _categories.value = emptyList()
             } finally {
@@ -153,5 +187,8 @@ class MainViewModel(
     fun selectCategory(category: ArchiveCategory) {
         lastSelectedCategory = category
         _selectedCategoryItems.value = category.items
+        if (_displayState.value == DisplayState.CATEGORY) {
+            _currentItems.value = category.items
+        }
     }
 }
