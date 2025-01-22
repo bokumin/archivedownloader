@@ -11,6 +11,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.bumptech.glide.Glide
 import net.bokumin45.archivedownloader.databinding.ActivityDetailBinding
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
@@ -72,6 +73,7 @@ class DetailActivity : AppCompatActivity() {
                 binding.progressBar.visibility = View.VISIBLE
                 val response = archiveService.getMetadata(identifier)
                 fileAdapter.submitList(response.files)
+
             } catch (e: Exception) {
                 Toast.makeText(this@DetailActivity, "Error loading metadata: ${e.message}", Toast.LENGTH_LONG).show()
             } finally {
@@ -79,7 +81,6 @@ class DetailActivity : AppCompatActivity() {
             }
         }
     }
-
     private fun downloadFile(file: ArchiveFile) {
         val downloadUrl = "${ArchiveService.BASE_URL}download/$identifier/${Uri.encode(file.name)}"
         val request = DownloadManager.Request(Uri.parse(downloadUrl))

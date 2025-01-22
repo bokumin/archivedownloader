@@ -1,5 +1,7 @@
 package net.bokumin45.archivedownloader
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -55,6 +57,9 @@ class MainActivity : AppCompatActivity() {
         showHome()
     }
 
+    companion object {
+        private const val VPN_REQUEST_CODE = 1
+    }
     private fun setupDrawer() {
         drawerLayout = binding.drawerLayout
         navigationView = binding.navigationView
@@ -79,6 +84,16 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_home -> {
                     showHome()
                     drawerLayout.closeDrawers()
+                    true
+                }
+                R.id.nav_donate_archive -> {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://archive.org/donate/"))
+                    startActivity(intent)
+                    true
+                }
+                R.id.nav_donate_website -> {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://bokumin45.server-on.net"))
+                    startActivity(intent)
                     true
                 }
                 else -> false
