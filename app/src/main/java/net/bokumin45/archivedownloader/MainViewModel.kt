@@ -52,20 +52,16 @@ class MainViewModel(
                 _error.value = null
 
                 if (category.parent == "latest") {
-                    // latestカテゴリーの場合
                     if (category.name == "latest") {
-                        // latestそのものをクリックした場合
                         val items = repository.getLatestUploads()
                         _selectedCategoryItems.value = items
                         if (_displayState.value == DisplayState.CATEGORY) {
                             _currentItems.value = items
                         }
                     } else {
-                        // latestの子カテゴリーの場合
                         loadLatestCategoryItems(category)
                     }
                 } else {
-                    // 通常のカテゴリーの場合
                     loadNormalCategoryItems(category)
                 }
             } catch (e: Exception) {
@@ -285,15 +281,39 @@ class MainViewModel(
                 _isLoading.value = true
                 _error.value = null
 
-
-                val latestItems = repository.getLatestUploads()
-
                 val latestCategory = ArchiveCategory(
                     name = "latest",
-                    items = latestItems,
+                    items = emptyList(),
                     subCategories = emptyList(),
                     parent = null
                 )
+
+                val categoriesCategory = ArchiveCategory(
+                    name = "categories",
+                    items = emptyList(),
+                    subCategories = emptyList(),
+                    parent = null
+                )
+
+                _categories.value = listOf(latestCategory, categoriesCategory)
+
+                if (_displayState.value == DisplayState.HOME) {
+                    _currentItems.value = _categories.value
+                }
+
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Unknown error occurred"
+                _categories.value = emptyList()
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    fun fetchCategories() {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _error.value = null
 
                 val mainCategories = listOf(
                     ArchiveCategory(name = "texts", items = emptyList(), subCategories = emptyList(), parent = null),
@@ -313,7 +333,6 @@ class MainViewModel(
                     ArchiveCategory(name = "additional_collections", items = emptyList(), subCategories = emptyList(), parent = null)
                 )
 
-                _categories.value = listOf(latestCategory) + mainCategories
 
                 if (_displayState.value == DisplayState.HOME) {
                     _currentItems.value = _categories.value
@@ -331,31 +350,89 @@ class MainViewModel(
 
     fun selectCategory(category: ArchiveCategory) {
         lastSelectedCategory = category
-        when {
-            category.name == "latest" -> {
+        when (category.name) {
+            "latest" -> {
                 viewModelScope.launch {
                     try {
                         _isLoading.value = true
                         val items = repository.getLatestUploads()
+
+                        // Create subcategories based on the latest items
+                        val categoryGroups = items.groupBy { it.mainCategory }
+                        val mainCategories = categoryGroups.map { (categoryName, categoryItems) ->
+                            val subCategoryGroups = categoryItems
+                                .filter { it.subCategory.isNotEmpty() }
+                                .groupBy { it.subCategory }
+
+                            val subCategories = subCategoryGroups.map { (subName, subItems) ->
+                                ArchiveCategory(
+                                    name = "$categoryName/$subName",
+                                    items = subItems,
+                                    parent = categoryName
+                                )
+                            }.sortedBy { it.name }
+
+                            ArchiveCategory(
+                                name = categoryName,
+                                items = categoryItems.filter { it.subCategory.isEmpty() },
+                                subCategories = subCategories,
+                                parent = "latest"
+                            )
+                        }.sortedBy { it.name }
+
+                        val updatedCategory = category.copy(
+                            items = items,
+                            subCategories = mainCategories
+                        )
+
                         _selectedCategoryItems.value = items
                         if (_displayState.value == DisplayState.CATEGORY) {
-                            _currentItems.value = items
+                            _currentItems.value = updatedCategory.subCategories
                         }
                     } finally {
                         _isLoading.value = false
                     }
                 }
             }
-            category.parent == "latest" -> {
-                loadCategory(category)
+            "categories" -> {
+                viewModelScope.launch {
+                    try {
+                        _isLoading.value = true
+
+                        val mainCategories = listOf(
+                            ArchiveCategory(name = "texts", items = emptyList(), subCategories = emptyList(), parent = null),
+                            ArchiveCategory(name = "movies", items = emptyList(), subCategories = emptyList(), parent = null),
+                            ArchiveCategory(name = "audio", items = emptyList(), subCategories = emptyList(), parent = null),
+                            ArchiveCategory(name = "software", items = emptyList(), subCategories = emptyList(), parent = null),
+                            ArchiveCategory(name = "image", items = emptyList(), subCategories = emptyList(), parent = null),
+                            ArchiveCategory(name = "web", items = emptyList(), subCategories = emptyList(), parent = null),
+                            ArchiveCategory(name = "data", items = emptyList(), subCategories = emptyList(), parent = null),
+                            ArchiveCategory(name = "education", items = emptyList(), subCategories = emptyList(), parent = null),
+                            ArchiveCategory(name = "collection", items = emptyList(), subCategories = emptyList(), parent = null),
+                            ArchiveCategory(name = "journals", items = emptyList(), subCategories = emptyList(), parent = null),
+                            ArchiveCategory(name = "etree", items = emptyList(), subCategories = emptyList(), parent = null),
+                            ArchiveCategory(name = "prelinger", items = emptyList(), subCategories = emptyList(), parent = null),
+                            ArchiveCategory(name = "podcasts", items = emptyList(), subCategories = emptyList(), parent = null),
+                            ArchiveCategory(name = "radio", items = emptyList(), subCategories = emptyList(), parent = null),
+                            ArchiveCategory(name = "additional_collections", items = emptyList(), subCategories = emptyList(), parent = null)
+                        )
+
+                        if (_displayState.value == DisplayState.CATEGORY) {
+                            _currentItems.value = mainCategories
+                        }
+                    } finally {
+                        _isLoading.value = false
+                    }
+                }
             }
             else -> {
-                currentCategoryName = category.name
-                currentCategoryPage = 1
-                isCategoryLastPage = false
-                _selectedCategoryItems.value = category.items
-                if (_displayState.value == DisplayState.CATEGORY) {
-                    _currentItems.value = category.items
+                if (category.parent == "latest") {
+                    loadCategory(category)
+                } else {
+                    currentCategoryName = category.name
+                    currentCategoryPage = 1
+                    isCategoryLastPage = false
+                    loadCategory(category)
                 }
             }
         }
