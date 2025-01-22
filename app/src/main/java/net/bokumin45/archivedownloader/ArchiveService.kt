@@ -20,6 +20,12 @@ interface ArchiveService {
         @Query("page") page: Int = 1
     ): SearchResponse
 
+    suspend fun getCategoryItems(
+        @Path("category") category: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20
+    ): List<ArchiveItem>
+
     @GET("metadata/{identifier}")
     suspend fun getMetadata(@Path("identifier") identifier: String): MetadataResponse
 

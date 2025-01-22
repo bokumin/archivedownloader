@@ -1,6 +1,5 @@
 package net.bokumin45.archivedownloader
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
@@ -40,8 +39,104 @@ class MainViewModel(
     private var lastSelectedCategory: ArchiveCategory? = null
     private var currentSearchJob: Job? = null
     private var currentPage = 1
+    private var currentCategoryPage = 1
+    private var isCategoryLastPage = false
+    private var currentCategoryName: String? = null
     private var isLastPage = false
     private var currentQuery = ""
+
+    fun loadCategory(category: ArchiveCategory) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _error.value = null
+
+                if (category.parent == "latest") {
+                    // latestカテゴリーの場合
+                    if (category.name == "latest") {
+                        // latestそのものをクリックした場合
+                        val items = repository.getLatestUploads()
+                        _selectedCategoryItems.value = items
+                        if (_displayState.value == DisplayState.CATEGORY) {
+                            _currentItems.value = items
+                        }
+                    } else {
+                        // latestの子カテゴリーの場合
+                        loadLatestCategoryItems(category)
+                    }
+                } else {
+                    // 通常のカテゴリーの場合
+                    loadNormalCategoryItems(category)
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to load category items: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    private suspend fun loadLatestCategoryItems(category: ArchiveCategory) {
+        val latestItems = repository.getLatestUploads()
+        val filteredItems = when {
+            category.name.contains("/") -> {
+                val (main, sub) = category.name.split("/")
+                latestItems.filter { it.mainCategory == main && it.subCategory == sub }
+            }
+            else -> {
+                latestItems.filter { it.mainCategory == category.name }
+            }
+        }
+
+        _selectedCategoryItems.value = filteredItems
+        lastSelectedCategory = category.copy(items = filteredItems)
+
+        if (_displayState.value == DisplayState.CATEGORY) {
+            _currentItems.value = filteredItems
+        }
+    }
+
+    private suspend fun loadNormalCategoryItems(category: ArchiveCategory) {
+        currentCategoryPage = 1
+        isCategoryLastPage = false
+        currentCategoryName = category.name
+
+        val items = repository.getCategoryItems(category.name, currentCategoryPage)
+        val updatedCategory = category.copy(items = items)
+
+        _selectedCategoryItems.value = items
+        lastSelectedCategory = updatedCategory
+
+        if (_displayState.value == DisplayState.CATEGORY) {
+            _currentItems.value = items
+        }
+    }
+    fun loadNextCategoryPage() {
+        if (!isCategoryLastPage && !_isLoading.value && currentCategoryName != null) {
+            viewModelScope.launch {
+                try {
+                    _isLoading.value = true
+                    currentCategoryPage++
+
+                    val newItems = repository.getCategoryItems(currentCategoryName!!, currentCategoryPage)
+
+                    if (newItems.isEmpty()) {
+                        isCategoryLastPage = true
+                    } else {
+                        _selectedCategoryItems.value = _selectedCategoryItems.value + newItems
+                        if (_displayState.value == DisplayState.CATEGORY) {
+                            _currentItems.value = _selectedCategoryItems.value
+                        }
+                    }
+                } catch (e: Exception) {
+                    _error.value = "Failed to load more items: ${e.message}"
+                    currentCategoryPage--
+                } finally {
+                    _isLoading.value = false
+                }
+            }
+        }
+    }
 
     fun getLastSelectedCategory(): ArchiveCategory? = lastSelectedCategory
 
@@ -184,11 +279,85 @@ class MainViewModel(
         }
     }
 
+    fun fetchHomeCategories() {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _error.value = null
+
+
+                val latestItems = repository.getLatestUploads()
+
+                val latestCategory = ArchiveCategory(
+                    name = "latest",
+                    items = latestItems,
+                    subCategories = emptyList(),
+                    parent = null
+                )
+
+                val mainCategories = listOf(
+                    ArchiveCategory(name = "texts", items = emptyList(), subCategories = emptyList(), parent = null),
+                    ArchiveCategory(name = "movies", items = emptyList(), subCategories = emptyList(), parent = null),
+                    ArchiveCategory(name = "audio", items = emptyList(), subCategories = emptyList(), parent = null),
+                    ArchiveCategory(name = "software", items = emptyList(), subCategories = emptyList(), parent = null),
+                    ArchiveCategory(name = "image", items = emptyList(), subCategories = emptyList(), parent = null),
+                    ArchiveCategory(name = "web", items = emptyList(), subCategories = emptyList(), parent = null),
+                    ArchiveCategory(name = "data", items = emptyList(), subCategories = emptyList(), parent = null),
+                    ArchiveCategory(name = "education", items = emptyList(), subCategories = emptyList(), parent = null),
+                    ArchiveCategory(name = "collection", items = emptyList(), subCategories = emptyList(), parent = null),
+                    ArchiveCategory(name = "journals", items = emptyList(), subCategories = emptyList(), parent = null),
+                    ArchiveCategory(name = "etree", items = emptyList(), subCategories = emptyList(), parent = null),
+                    ArchiveCategory(name = "prelinger", items = emptyList(), subCategories = emptyList(), parent = null),
+                    ArchiveCategory(name = "podcasts", items = emptyList(), subCategories = emptyList(), parent = null),
+                    ArchiveCategory(name = "radio", items = emptyList(), subCategories = emptyList(), parent = null),
+                    ArchiveCategory(name = "additional_collections", items = emptyList(), subCategories = emptyList(), parent = null)
+                )
+
+                _categories.value = listOf(latestCategory) + mainCategories
+
+                if (_displayState.value == DisplayState.HOME) {
+                    _currentItems.value = _categories.value
+                }
+
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Unknown error occurred"
+                _categories.value = emptyList()
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+
     fun selectCategory(category: ArchiveCategory) {
         lastSelectedCategory = category
-        _selectedCategoryItems.value = category.items
-        if (_displayState.value == DisplayState.CATEGORY) {
-            _currentItems.value = category.items
+        when {
+            category.name == "latest" -> {
+                viewModelScope.launch {
+                    try {
+                        _isLoading.value = true
+                        val items = repository.getLatestUploads()
+                        _selectedCategoryItems.value = items
+                        if (_displayState.value == DisplayState.CATEGORY) {
+                            _currentItems.value = items
+                        }
+                    } finally {
+                        _isLoading.value = false
+                    }
+                }
+            }
+            category.parent == "latest" -> {
+                loadCategory(category)
+            }
+            else -> {
+                currentCategoryName = category.name
+                currentCategoryPage = 1
+                isCategoryLastPage = false
+                _selectedCategoryItems.value = category.items
+                if (_displayState.value == DisplayState.CATEGORY) {
+                    _currentItems.value = category.items
+                }
+            }
         }
     }
 }

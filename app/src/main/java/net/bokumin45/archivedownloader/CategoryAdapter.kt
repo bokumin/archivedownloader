@@ -12,6 +12,11 @@ class CategoryAdapter(
     private val onCategoryClick: (ArchiveCategory) -> Unit
 ) : ListAdapter<CategoryAdapter.CategoryListItem, CategoryAdapter.ViewHolder>(CategoryDiffCallback()) {
 
+    private var isLatestSelected: Boolean = false
+    fun updateLatestState(isLatest: Boolean) {
+        isLatestSelected = isLatest
+        notifyDataSetChanged()
+    }
     sealed class CategoryListItem {
         data class CategoryItem(
             val category: ArchiveCategory,
@@ -52,27 +57,24 @@ class CategoryAdapter(
                 is CategoryListItem.CategoryItem -> {
                     val category = item.category
                     val indent = "  ".repeat(item.level)
+
                     val displayName = buildString {
                         append(indent)
                         append(category.displayName)
-                        append(" (${category.totalItemCount})")
-                    }
-                    textView.text = displayName
-                    // カテゴリーに子カテゴリーがある場合は、子カテゴリーを含むアイテムすべてを表示
-                    itemView.setOnClickListener {
-                        if (category.subCategories.isNotEmpty()) {
-                            // サブカテゴリーを含むすべてのアイテムを表示
-                            val allItems = category.items +
-                                    category.subCategories.flatMap { it.items }
-                            onCategoryClick(category.copy(items = allItems))
-                        } else {
-                            onCategoryClick(category)
+                        if (isLatestSelected) {
+                            append(" (${category.totalItemCount})")
                         }
+                    }
+
+                    textView.text = displayName
+                    itemView.setOnClickListener {
+                        onCategoryClick(category)
                     }
                 }
             }
         }
     }
+
 
     private class CategoryDiffCallback : DiffUtil.ItemCallback<CategoryListItem>() {
         override fun areItemsTheSame(oldItem: CategoryListItem, newItem: CategoryListItem): Boolean {
@@ -88,4 +90,5 @@ class CategoryAdapter(
             return oldItem == newItem
         }
     }
+
 }

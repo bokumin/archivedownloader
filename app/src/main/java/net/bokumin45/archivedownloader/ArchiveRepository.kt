@@ -80,6 +80,29 @@ class ArchiveRepository(private val archiveService: ArchiveService) {
         return items
     }
 
+    suspend fun getCategoryItems(category: String, page: Int): List<ArchiveItem> {
+        return try {
+            val queryString = when {
+                category == "latest" -> "*" // すべてのアイテムを取得
+                category.contains("/") -> {
+                    val (main, sub) = category.split("/")
+                    "collection:$main AND mediatype:$sub"
+                }
+                else -> "collection:$category"
+            }
+
+            val response = archiveService.searchItems(
+                query = queryString,
+                page = page,
+                rows = 50,
+                fields = listOf("identifier", "title", "mediatype", "collection", "subject")
+            )
+            response.response.docs.map { it.toArchiveItem() }
+        } catch (e: Exception) {
+            throw Exception("Failed to fetch category items: ${e.message}")
+        }
+    }
+
     suspend fun searchItems(query: String, page: Int): SearchResponse {
         return archiveService.searchItems(
             query = query,

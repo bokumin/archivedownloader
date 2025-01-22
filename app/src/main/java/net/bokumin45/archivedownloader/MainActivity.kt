@@ -33,9 +33,24 @@ class MainActivity : AppCompatActivity() {
     private lateinit var toggle: ActionBarDrawerToggle
 
     private val categoryAdapter = CategoryAdapter { category ->
-        showCategoryItems(category)
-    }
+        when {
+            category.name == "latest" -> {
+                viewModel.fetchLatestUploads()
+                supportActionBar?.title = "Latest Uploads"
+            }
 
+            category.subCategories.isNotEmpty() -> {
+                viewModel.setDisplayState(DisplayState.CATEGORY)
+                viewModel.selectCategory(category)
+                supportActionBar?.title = category.name
+            }
+
+            else -> {
+                viewModel.loadCategory(category)
+                showCategoryItems(category)
+            }
+        }
+    }
     private val itemAdapter = ArchiveAdapter(
         onFavoriteClick = { item ->
             viewModel.toggleFavorite(item)
@@ -121,15 +136,18 @@ class MainActivity : AppCompatActivity() {
             addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                     super.onScrolled(recyclerView, dx, dy)
-                    if (isSearchActive) {
-                        val layoutManager = recyclerView.layoutManager as LinearLayoutManager
-                        val visibleItemCount = layoutManager.childCount
-                        val totalItemCount = layoutManager.itemCount
-                        val firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition()
+                    val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+                    val visibleItemCount = layoutManager.childCount
+                    val totalItemCount = layoutManager.itemCount
+                    val firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition()
 
-                        if ((visibleItemCount + firstVisibleItemPosition) >= totalItemCount
-                            && firstVisibleItemPosition >= 0) {
-                            viewModel.loadNextSearchPage()
+                    if ((visibleItemCount + firstVisibleItemPosition) >= totalItemCount
+                        && firstVisibleItemPosition >= 0
+                    ) {
+                        when (viewModel.displayState.value) {
+                            DisplayState.SEARCH -> viewModel.loadNextSearchPage()
+                            DisplayState.CATEGORY -> viewModel.loadNextCategoryPage()
+                            else -> {}
                         }
                     }
                 }
@@ -181,7 +199,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showHome() {
         viewModel.setDisplayState(DisplayState.HOME)
-        viewModel.fetchLatestUploads()
+        viewModel.fetchHomeCategories()
         supportActionBar?.title = getString(R.string.app_name)
     }
 
