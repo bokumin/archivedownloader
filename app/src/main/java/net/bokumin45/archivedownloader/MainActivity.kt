@@ -27,6 +27,15 @@ class MainActivity : AppCompatActivity() {
     private var isSearchActive = false
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navigationView: NavigationView
+    private lateinit var toggle: ActionBarDrawerToggle
+    private enum class DisplayState {
+        HOME,
+        CATEGORY,
+        FAVORITES,
+        SEARCH
+    }
+
+    private var currentState = DisplayState.HOME
 
     private val categoryAdapter = CategoryAdapter { category ->
         showCategoryItems(category)
@@ -54,7 +63,7 @@ class MainActivity : AppCompatActivity() {
         drawerLayout = binding.drawerLayout
         navigationView = binding.navigationView
 
-        val toggle = ActionBarDrawerToggle(
+        toggle = ActionBarDrawerToggle(
             this,
             drawerLayout,
             binding.toolbar,
@@ -163,45 +172,44 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
     private fun showCategoryItems(category: ArchiveCategory) {
-        binding.recyclerView.adapter = itemAdapter
+        if (currentState != DisplayState.CATEGORY) {
+            binding.recyclerView.adapter = itemAdapter
+        }
+        currentState = DisplayState.CATEGORY
         viewModel.selectCategory(category)
         supportActionBar?.apply {
             title = category.name
-            setDisplayHomeAsUpEnabled(true)
         }
     }
 
     private fun showFavorites() {
-        binding.recyclerView.adapter = itemAdapter
+        if (currentState != DisplayState.FAVORITES) {
+            binding.recyclerView.adapter = itemAdapter
+        }
+        currentState = DisplayState.FAVORITES
         viewModel.loadFavorites()
         supportActionBar?.apply {
             title = "Favorites"
-            setDisplayHomeAsUpEnabled(true)
         }
     }
 
     private fun showHome() {
-        binding.recyclerView.adapter = categoryAdapter
+        if (currentState != DisplayState.HOME) {
+            binding.recyclerView.adapter = categoryAdapter
+        }
+        currentState = DisplayState.HOME
         viewModel.fetchLatestUploads()
         supportActionBar?.apply {
             title = getString(R.string.app_name)
-            setDisplayHomeAsUpEnabled(false)
         }
     }
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            android.R.id.home -> {
-                if (drawerLayout.isDrawerOpen(navigationView)) {
-                    drawerLayout.closeDrawer(navigationView)
-                } else {
-                    showHome()
-                }
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
+        if (toggle.onOptionsItemSelected(item)) {
+            return true
         }
+        return super.onOptionsItemSelected(item)
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -214,10 +222,15 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
+
     private fun setupSearchView() {
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 query?.let {
+                    if (currentState != DisplayState.SEARCH) {
+                        binding.recyclerView.adapter = itemAdapter
+                    }
+                    currentState = DisplayState.SEARCH
                     isSearchActive = true
                     viewModel.search(it)
                     searchView.clearFocus()
@@ -227,17 +240,32 @@ class MainActivity : AppCompatActivity() {
 
             override fun onQueryTextChange(newText: String?): Boolean {
                 if (newText.isNullOrBlank()) {
+                    when (currentState) {
+                        DisplayState.HOME -> showHome()
+                        DisplayState.FAVORITES -> showFavorites()
+                        DisplayState.CATEGORY -> {
+                            viewModel.getLastSelectedCategory()?.let { showCategoryItems(it) }
+                        }
+                        DisplayState.SEARCH -> showHome()
+                    }
                     isSearchActive = false
-                    binding.recyclerView.adapter = categoryAdapter
                 }
                 return true
             }
         })
 
         searchView.setOnCloseListener {
+            when (currentState) {
+                DisplayState.HOME -> showHome()
+                DisplayState.FAVORITES -> showFavorites()
+                DisplayState.CATEGORY -> {
+                    viewModel.getLastSelectedCategory()?.let { showCategoryItems(it) }
+                }
+                DisplayState.SEARCH -> showHome()
+            }
             isSearchActive = false
-            binding.recyclerView.adapter = categoryAdapter
             false
         }
     }
+
 }

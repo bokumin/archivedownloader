@@ -12,7 +12,7 @@ import net.bokumin45.archivedownloader.repository.ArchiveRepository
 class MainViewModel(
     private val repository: ArchiveRepository,
     private val favoriteManager: FavoriteManager
-    ) : ViewModel() {
+) : ViewModel() {
     private val _categories = MutableStateFlow<List<ArchiveCategory>>(emptyList())
     val categories: StateFlow<List<ArchiveCategory>> = _categories
 
@@ -31,13 +31,18 @@ class MainViewModel(
     private val _favoriteItems = MutableStateFlow<List<ArchiveItem>>(emptyList())
     val favoriteItems: StateFlow<List<ArchiveItem>> = _favoriteItems
 
+    private var lastSelectedCategory: ArchiveCategory? = null
+    fun getLastSelectedCategory(): ArchiveCategory? = lastSelectedCategory
+
     fun toggleFavorite(item: ArchiveItem) {
         if (favoriteManager.isFavorite(item.identifier)) {
             favoriteManager.removeFavorite(item)
         } else {
             favoriteManager.addFavorite(item)
         }
-        loadFavorites()
+        if (_favoriteItems.value.isNotEmpty()) {
+            loadFavorites()
+        }
     }
 
     fun loadFavorites() {
@@ -104,17 +109,13 @@ class MainViewModel(
                 _error.value = null
                 val items = repository.getLatestUploads()
 
-                // メインカテゴリーでグループ化
                 val categoryGroups = items.groupBy { it.mainCategory }
 
-                // 各メインカテゴリーのサブカテゴリーを作成
                 val mainCategories = categoryGroups.map { (categoryName, categoryItems) ->
-                    // サブカテゴリーでグループ化
                     val subCategoryGroups = categoryItems
                         .filter { it.subCategory.isNotEmpty() }
                         .groupBy { it.subCategory }
 
-                    // サブカテゴリーを作成
                     val subCategories = subCategoryGroups.map { (subName, subItems) ->
                         ArchiveCategory(
                             name = "$categoryName/$subName",
@@ -123,7 +124,6 @@ class MainViewModel(
                         )
                     }.sortedBy { it.name }
 
-                    // メインカテゴリーを作成（サブカテゴリーがないアイテムも含める）
                     ArchiveCategory(
                         name = categoryName,
                         items = categoryItems.filter { it.subCategory.isEmpty() },
@@ -132,7 +132,6 @@ class MainViewModel(
                     )
                 }.sortedBy { it.name }
 
-                // Latest カテゴリーを作成
                 val latestCategory = ArchiveCategory(
                     name = "latest",
                     items = items,
@@ -152,6 +151,7 @@ class MainViewModel(
     }
 
     fun selectCategory(category: ArchiveCategory) {
+        lastSelectedCategory = category
         _selectedCategoryItems.value = category.items
     }
 }
