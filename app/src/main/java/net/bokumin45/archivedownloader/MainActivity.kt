@@ -64,6 +64,7 @@ class MainActivity : AppCompatActivity() {
         isFavorite = { identifier -> viewModel.isFavorite(identifier) }
     )
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -171,6 +172,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun observeViewModel() {
         lifecycleScope.launch {
             viewModel.currentItems.collect { items ->
@@ -202,6 +204,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun showCategoryItems(category: ArchiveCategory) {
         viewModel.setDisplayState(DisplayState.CATEGORY)
         viewModel.selectCategory(category)

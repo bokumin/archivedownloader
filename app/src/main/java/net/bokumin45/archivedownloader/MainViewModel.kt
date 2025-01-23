@@ -49,6 +49,62 @@ class MainViewModel(
     private var currentCategoryName: String? = null
     private var isLastPage = false
     private var currentQuery = ""
+    init {
+        loadInitialCategories()
+    }
+
+    private fun loadInitialCategories() {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                val mainCategories = listOf(
+                    ArchiveCategory(
+                        name = "latest",
+                        displayName = "Latest Updates",
+                        items = emptyList(),
+                        subCategories = listOf(
+                            ArchiveCategory(name = "latest/uploads", displayName = "Latest Uploads", items = emptyList(), parent = "latest"),
+                            ArchiveCategory(name = "latest/featured", displayName = "Featured Content", items = emptyList(), parent = "latest")
+                        ),
+                        parent = null
+                    ),
+                    ArchiveCategory(
+                        name = "hot",
+                        displayName = "Popular Content",
+                        items = emptyList(),
+                        subCategories = listOf(
+                            ArchiveCategory(name = "hot/day", displayName = "Last 24 Hours", items = emptyList(), parent = "hot"),
+                            ArchiveCategory(name = "hot/week", displayName = "This Week", items = emptyList(), parent = "hot"),
+                            ArchiveCategory(name = "hot/month", displayName = "This Month", items = emptyList(), parent = "hot")
+                        ),
+                        parent = null
+                    ),
+                    ArchiveCategory(
+                        name = "media",
+                        displayName = "Media Types",
+                        items = emptyList(),
+                        subCategories = listOf(
+                            ArchiveCategory(name = "texts", displayName = "Books & Texts", items = emptyList(), parent = "media"),
+                            ArchiveCategory(name = "movies", displayName = "Movies", items = emptyList(), parent = "media"),
+                            ArchiveCategory(name = "audio", displayName = "Audio", items = emptyList(), parent = "media"),
+                            ArchiveCategory(name = "software", displayName = "Software", items = emptyList(), parent = "media")
+                        ),
+                        parent = null
+                    )
+                )
+
+                _categories.value = mainCategories
+                if (_displayState.value == DisplayState.HOME) {
+                    _currentItems.value = mainCategories
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to load categories: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     fun loadCategory(category: ArchiveCategory) {
         viewModelScope.launch {
             try {
@@ -466,3 +522,7 @@ class MainViewModel(
         }
     }
 }
+data class CategoryGroup(
+    val title: String,
+    val categories: List<ArchiveCategory>
+)
