@@ -10,6 +10,8 @@ import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
@@ -20,6 +22,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.leinardi.android.speeddial.SpeedDialActionItem
@@ -102,23 +105,12 @@ class MainActivity : AppCompatActivity() {
         )
 
         speedDial.addActionItem(
-            SpeedDialActionItem.Builder(R.id.fab_donate_archive, R.drawable.ic_donate)
-                .setLabel(getString(R.string.donate_archive))
+            SpeedDialActionItem.Builder(R.id.fab_donate, R.drawable.ic_donate)
+                .setLabel(getString(R.string.donate))
                 .setFabBackgroundColor(ResourcesCompat.getColor(resources, R.color.primary, theme))
                 .setFabImageTintColor(Color.WHITE)
                 .create()
         )
-
-        speedDial.addActionItem(
-            SpeedDialActionItem.Builder(R.id.fab_donate_website, R.drawable.ic_donate)
-                .setLabel(getString(R.string.donate_website))
-                .setFabBackgroundColor(ResourcesCompat.getColor(resources, R.color.primary, theme))
-                .setFabImageTintColor(Color.WHITE)
-                .create()
-        )
-
-        speedDial.setExpansionMode(SpeedDialView.ExpansionMode.TOP)
-        speedDial.setOrientation(SpeedDialView.VERTICAL)
 
         speedDial.setOnActionSelectedListener { actionItem ->
             when (actionItem.id) {
@@ -132,13 +124,8 @@ class MainActivity : AppCompatActivity() {
                     speedDial.close()
                     true
                 }
-                R.id.fab_donate_archive -> {
-                    showConfirmationDialog("https://archive.org/donate/")
-                    speedDial.close()
-                    true
-                }
-                R.id.fab_donate_website -> {
-                    showConfirmationDialog("https://bokumin45.server-on.net")
+                R.id.fab_donate -> {
+                    showDonateDialog()
                     speedDial.close()
                     true
                 }
@@ -244,17 +231,40 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showDonateDialog() {
-        AlertDialog.Builder(this)
+        val view = layoutInflater.inflate(R.layout.dialog_donate, null)
+
+        val archiveImage = view.findViewById<ImageView>(R.id.archiveImage)
+        val websiteImage = view.findViewById<ImageView>(R.id.websiteImage)
+        val archiveButton = view.findViewById<LinearLayout>(R.id.archiveButton)
+        val websiteButton = view.findViewById<LinearLayout>(R.id.websiteButton)
+
+        Glide.with(this)
+            .load(R.drawable.archive_thumbnail)
+            .centerCrop()
+            .into(archiveImage)
+
+        Glide.with(this)
+            .load(R.drawable.website_thumbnail)
+            .centerCrop()
+            .into(websiteImage)
+
+        val dialog = AlertDialog.Builder(this)
             .setTitle(getString(R.string.donate))
-            .setMessage(getString(R.string.donate_message))
-            .setPositiveButton("Archive.org") { _, _ ->
-                showConfirmationDialog("https://archive.org/donate/")
-            }
-            .setNeutralButton("Website") { _, _ ->
-                showConfirmationDialog("https://bokumin45.server-on.net")
-            }
+            .setView(view)
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .create()
+
+        archiveButton.setOnClickListener {
+            showConfirmationDialog("https://archive.org/donate/")
+            dialog.dismiss()
+        }
+
+        websiteButton.setOnClickListener {
+            showConfirmationDialog("https://bokumin45.server-on.net")
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     companion object {
@@ -357,5 +367,18 @@ class MainActivity : AppCompatActivity() {
     private fun showHome() {
         viewModel.setDisplayState(DisplayState.HOME)
         viewModel.fetchHomeCategories()
+    }
+
+    override fun onBackPressed() {
+        when {
+            binding.speedDial.isOpen -> {
+                binding.speedDial.close()
+            }
+            viewModel.displayState.value != DisplayState.HOME -> {
+                showHome()}
+            else -> {
+                super.onBackPressed()
+            }
+        }
     }
 }
