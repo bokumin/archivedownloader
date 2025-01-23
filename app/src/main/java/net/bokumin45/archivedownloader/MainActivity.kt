@@ -8,6 +8,7 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.SearchView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.drawerlayout.widget.DrawerLayout
@@ -75,6 +76,18 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val VPN_REQUEST_CODE = 1
     }
+
+    private fun showConfirmationDialog(url: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Confirm")
+            .setMessage("Would you like to open this page in your browser?")
+            .setPositiveButton("OK") { _, _ ->
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                startActivity(intent)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
     private fun setupDrawer() {
         drawerLayout = binding.drawerLayout
         navigationView = binding.navigationView
@@ -102,13 +115,11 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 R.id.nav_donate_archive -> {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://archive.org/donate/"))
-                    startActivity(intent)
+                    showConfirmationDialog("https://archive.org/donate/")
                     true
                 }
                 R.id.nav_donate_website -> {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://bokumin45.server-on.net"))
-                    startActivity(intent)
+                    showConfirmationDialog("https://bokumin45.server-on.net")
                     true
                 }
                 else -> false
