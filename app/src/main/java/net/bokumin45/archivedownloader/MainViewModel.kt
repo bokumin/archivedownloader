@@ -329,39 +329,85 @@ class MainViewModel(
     }
     @RequiresApi(Build.VERSION_CODES.O)
     fun selectCategory(category: ArchiveCategory) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-            lastSelectedCategory = category
+        lastSelectedCategory = category
+        when {
+            category.name == "latest" -> {
+                viewModelScope.launch {
+                    try {
+                        _isLoading.value = true
+                        val items = repository.getLatestUploads()
 
-            try {
-                when {
-                    category.name == "latest" -> {
-                        fetchLatestUploads()
-                    }
-                    category.parent == "latest" -> {
-                        setDisplayState(DisplayState.CATEGORY)
-                        loadCategory(category)
-                    }
-                    category.parent == "hot" -> {
-                        setDisplayState(DisplayState.CATEGORY)
-                        handleHotPeriodCategory(category)
-                    }
-                    category.name == "categories" -> {
-                        showMainCategories()
-                    }
-                    else -> {
-                        setDisplayState(DisplayState.CATEGORY)
-                        currentCategoryName = category.name
-                        currentCategoryPage = 1
-                        isCategoryLastPage = false
-                        loadCategory(category)
+                        val categoryGroups = items.groupBy { it.mainCategory }
+                        val mainCategories = categoryGroups.map { (categoryName, categoryItems) ->
+                            val subCategoryGroups = categoryItems
+                                .filter { it.subCategory.isNotEmpty() }
+                                .groupBy { it.subCategory }
+
+                            val subCategories = subCategoryGroups.map { (subName, subItems) ->
+                                ArchiveCategory(
+                                    name = "$categoryName/$subName",
+                                    items = subItems,
+                                    parent = categoryName
+                                )
+                            }.sortedBy { it.name }
+
+                            ArchiveCategory(
+                                name = categoryName,
+                                items = categoryItems.filter { it.subCategory.isEmpty() },
+                                subCategories = subCategories,
+                                parent = "latest"
+                            )
+                        }.sortedBy { it.name }
+
+                        val updatedCategory = category.copy(
+                            items = items,
+                            subCategories = mainCategories
+                        )
+
+                        _selectedCategoryItems.value = items
+                        if (_displayState.value == DisplayState.CATEGORY) {
+                            _currentItems.value = updatedCategory.subCategories
+                        }
+                    } finally {
+                        _isLoading.value = false
                     }
                 }
-            } catch (e: Exception) {
-                _error.value = "Failed to select category: ${e.message}"
-            } finally {
-                _isLoading.value = false
+            }
+            category.name.contains("/") -> {
+                viewModelScope.launch {
+                    try {
+                        _isLoading.value = true
+                        val items = repository.getLatestUploads()
+                        val (mainCategory, subCategory) = category.name.split("/")
+                        val filteredItems = items.filter {
+                            it.mainCategory == mainCategory && it.subCategory == subCategory
+                        }
+                        _selectedCategoryItems.value = filteredItems
+                        if (_displayState.value == DisplayState.CATEGORY) {
+                            _currentItems.value = filteredItems
+                        }
+                    } finally {
+                        _isLoading.value = false
+                    }
+                }
+            }
+            category.name == "categories" -> {
+                showMainCategories()
+            }
+            category.name == "hot" -> {
+                handleHotCategory(category)
+            }
+            else -> {
+                if (category.parent == "latest") {
+                    loadCategory(category)
+                } else if (category.parent == "hot") {
+                    handleHotPeriodCategory(category)
+                } else {
+                    currentCategoryName = category.name
+                    currentCategoryPage = 1
+                    isCategoryLastPage = false
+                    loadCategory(category)
+                }
             }
         }
     }
