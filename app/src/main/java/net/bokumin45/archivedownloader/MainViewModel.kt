@@ -244,10 +244,12 @@ class MainViewModel(
             currentPage = 1
             isLastPage = false
             _searchResults.value = emptyList()
+            _currentItems.value = emptyList()
         }
 
         if (query.isBlank()) {
             _searchResults.value = emptyList()
+            _currentItems.value = emptyList()
             return
         }
 
@@ -257,7 +259,6 @@ class MainViewModel(
             try {
                 _isLoading.value = true
 
-                // カテゴリーが選択されている場合は検索クエリに追加
                 val finalQuery = buildString {
                     if (categories.isNotEmpty()) {
                         append("(")
@@ -273,14 +274,20 @@ class MainViewModel(
                 )
                 val newItems = response.response.docs.map { it.toArchiveItem() }
 
-                if (resetPage) {
-                    _searchResults.value = newItems
+                if (newItems.isEmpty()) {
+                    _searchResults.value = emptyList()
+                    _currentItems.value = emptyList()
+                    _error.value = "No results found for \"$query\""
                 } else {
-                    _searchResults.value = _searchResults.value + newItems
-                }
+                    if (resetPage) {
+                        _searchResults.value = newItems
+                    } else {
+                        _searchResults.value = _searchResults.value + newItems
+                    }
 
-                if (_displayState.value == DisplayState.SEARCH) {
-                    _currentItems.value = _searchResults.value
+                    if (_displayState.value == DisplayState.SEARCH) {
+                        _currentItems.value = _searchResults.value
+                    }
                 }
 
                 isLastPage = newItems.isEmpty() ||
@@ -288,12 +295,13 @@ class MainViewModel(
 
             } catch (e: Exception) {
                 _error.value = "Search failed: ${e.message}"
+                _searchResults.value = emptyList()
+                _currentItems.value = emptyList()
             } finally {
                 _isLoading.value = false
             }
         }
     }
-
     fun loadNextSearchPage() {
         if (!isLastPage && !_isLoading.value) {
             currentPage++
