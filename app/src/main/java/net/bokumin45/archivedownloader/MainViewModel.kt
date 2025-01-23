@@ -239,7 +239,7 @@ class MainViewModel(
         return favoriteManager.isFavorite(identifier)
     }
 
-    fun search(query: String, resetPage: Boolean = true) {
+    fun search(query: String, categories: List<String> = emptyList(), resetPage: Boolean = true) {
         if (resetPage) {
             currentPage = 1
             isLastPage = false
@@ -256,7 +256,21 @@ class MainViewModel(
         currentSearchJob = viewModelScope.launch {
             try {
                 _isLoading.value = true
-                val response = repository.searchItems(query, currentPage)
+
+                // カテゴリーが選択されている場合は検索クエリに追加
+                val finalQuery = buildString {
+                    if (categories.isNotEmpty()) {
+                        append("(")
+                        append(categories.joinToString(" OR ") { "mediatype:$it" })
+                        append(") AND ")
+                    }
+                    append(query)
+                }
+
+                val response = repository.searchItems(
+                    query = finalQuery,
+                    page = currentPage
+                )
                 val newItems = response.response.docs.map { it.toArchiveItem() }
 
                 if (resetPage) {
@@ -283,7 +297,7 @@ class MainViewModel(
     fun loadNextSearchPage() {
         if (!isLastPage && !_isLoading.value) {
             currentPage++
-            search(currentQuery, false)
+            search(currentQuery, emptyList(), false)
         }
     }
 

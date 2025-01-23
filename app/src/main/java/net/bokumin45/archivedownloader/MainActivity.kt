@@ -4,23 +4,29 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
+import android.widget.ArrayAdapter
 import android.widget.EditText
+import android.widget.Spinner
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.SearchView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.children
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
 import com.google.android.material.navigation.NavigationView
 import net.bokumin45.archivedownloader.databinding.ActivityMainBinding
 import kotlinx.coroutines.launch
@@ -89,35 +95,87 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSearchDialog() {
-        val editText = EditText(this).apply {
-            setSingleLine()
-            imeOptions = EditorInfo.IME_ACTION_SEARCH
+        val view = layoutInflater.inflate(R.layout.dialog_search, null)
+        val editText = view.findViewById<EditText>(R.id.searchEditText)
+        val chipGroup = view.findViewById<ChipGroup>(R.id.categoryChipGroup)
+
+        lateinit var dialog: AlertDialog
+
+        val categoriesFirstRow = listOf(
+            "Texts" to "texts",
+            "Movies" to "movies",
+            "Audio" to "audio",
+            "Software" to "software",
+            "Image" to "image",
+            "Web" to "web",
+            "Data" to "data"
+        )
+
+        val categoriesSecondRow = listOf(
+            "Education" to "education",
+            "Collection" to "collection",
+            "Journals" to "journals",
+            "Etree" to "etree",
+            "Prelinger" to "prelinger",
+            "Podcasts" to "podcasts",
+            "Radio" to "radio",
+            "Additional Collections" to "additional_collections"
+        )
+
+        categoriesFirstRow.forEach { (displayName, value) ->
+            val chip = Chip(this).apply {
+                text = displayName
+                isCheckable = true
+                tag = value
+            }
+            chipGroup.addView(chip)
         }
 
-        val dialog = AlertDialog.Builder(this)
+        categoriesSecondRow.forEach { (displayName, value) ->
+            val chip = Chip(this).apply {
+                text = displayName
+                isCheckable = true
+                tag = value
+            }
+            chipGroup.addView(chip)
+        }
+
+        val executeSearch = {
+            val query = editText.text.toString()
+            if (query.isNotBlank()) {
+                val selectedCategories = chipGroup.children
+                    .filterIsInstance<Chip>()
+                    .filter { it.isChecked }
+                    .map { it.tag as String }
+                    .toList()
+
+                viewModel.setDisplayState(DisplayState.SEARCH)
+                viewModel.search(query, selectedCategories)
+                dialog.dismiss()
+            }
+        }
+
+        dialog = AlertDialog.Builder(this)
             .setTitle("Search")
-            .setView(editText)
+            .setView(view)
             .setPositiveButton("Search") { _, _ ->
-                val query = editText.text.toString()
-                if (query.isNotBlank()) {
-                    viewModel.setDisplayState(DisplayState.SEARCH)
-                    viewModel.search(query)
-                }
+                executeSearch()
             }
             .setNegativeButton("Cancel", null)
             .create()
 
-        editText.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                val query = editText.text.toString()
-                if (query.isNotBlank()) {
-                    viewModel.setDisplayState(DisplayState.SEARCH)
-                    viewModel.search(query)
-                    dialog.dismiss()
-                    return@setOnEditorActionListener true
+        editText.setOnEditorActionListener { _, actionId, event ->
+            when {
+                actionId == EditorInfo.IME_ACTION_SEARCH -> {
+                    executeSearch()
+                    true
                 }
+                event?.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_UP -> {
+                    executeSearch()
+                    true
+                }
+                else -> false
             }
-            false
         }
 
         dialog.show()
@@ -125,7 +183,6 @@ class MainActivity : AppCompatActivity() {
         editText.requestFocus()
         dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
     }
-
     companion object {
         private const val VPN_REQUEST_CODE = 1
     }
