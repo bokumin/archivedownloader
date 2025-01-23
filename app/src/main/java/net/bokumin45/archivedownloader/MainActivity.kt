@@ -2,11 +2,13 @@ package net.bokumin45.archivedownloader
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.SearchView
@@ -33,19 +35,22 @@ class MainActivity : AppCompatActivity() {
     private lateinit var navigationView: NavigationView
     private lateinit var toggle: ActionBarDrawerToggle
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private val categoryAdapter = CategoryAdapter { category ->
         when {
             category.name == "latest" -> {
                 viewModel.fetchLatestUploads()
                 supportActionBar?.title = "Latest Uploads"
             }
-
+            category.parent == "latest" -> {
+                viewModel.loadCategory(category)
+                supportActionBar?.title = category.name
+            }
             category.subCategories.isNotEmpty() -> {
                 viewModel.setDisplayState(DisplayState.CATEGORY)
                 viewModel.selectCategory(category)
                 supportActionBar?.title = category.name
             }
-
             else -> {
                 viewModel.loadCategory(category)
                 showCategoryItems(category)

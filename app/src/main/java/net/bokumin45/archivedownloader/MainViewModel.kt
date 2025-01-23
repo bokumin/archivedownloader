@@ -1,5 +1,7 @@
 package net.bokumin45.archivedownloader
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
@@ -47,7 +49,6 @@ class MainViewModel(
     private var currentCategoryName: String? = null
     private var isLastPage = false
     private var currentQuery = ""
-
     fun loadCategory(category: ArchiveCategory) {
         viewModelScope.launch {
             try {
@@ -55,12 +56,14 @@ class MainViewModel(
                 _error.value = null
 
                 if (category.parent == "latest") {
-                    if (category.name == "latest") {
-                        val items = repository.getLatestUploads()
-                        _selectedCategoryItems.value = items
-                        if (_displayState.value == DisplayState.CATEGORY) {
-                            _currentItems.value = items
+                    if (category.name.contains("/")) {
+                        val (mainCategory, subCategory) = category.name.split("/")
+                        val latestItems = repository.getLatestUploads()
+                        val filteredItems = latestItems.filter {
+                            it.mainCategory == mainCategory && it.subCategory == subCategory
                         }
+                        _selectedCategoryItems.value = filteredItems
+                        _currentItems.value = filteredItems
                     } else {
                         loadLatestCategoryItems(category)
                     }
@@ -90,9 +93,7 @@ class MainViewModel(
         _selectedCategoryItems.value = filteredItems
         lastSelectedCategory = category.copy(items = filteredItems)
 
-        if (_displayState.value == DisplayState.CATEGORY) {
-            _currentItems.value = filteredItems
-        }
+        _currentItems.value = filteredItems
     }
 
     private suspend fun loadNormalCategoryItems(category: ArchiveCategory) {
@@ -136,6 +137,7 @@ class MainViewModel(
             }
         }
     }
+
 
     fun getLastSelectedCategory(): ArchiveCategory? = lastSelectedCategory
 
@@ -236,27 +238,29 @@ class MainViewModel(
                 _error.value = null
                 val items = repository.getLatestUploads()
 
-                val categoryGroups = items.groupBy { it.mainCategory }
-                val mainCategories = categoryGroups.map { (categoryName, categoryItems) ->
-                    val subCategoryGroups = categoryItems
-                        .filter { it.subCategory.isNotEmpty() }
-                        .groupBy { it.subCategory }
+                val mainCategories = items
+                    .groupBy { it.mainCategory }
+                    .map { (mainCategory, categoryItems) ->
+                        val subCategories = categoryItems
+                            .filter { it.subCategory.isNotEmpty() }
+                            .groupBy { it.subCategory }
+                            .map { (subName, subItems) ->
+                                ArchiveCategory(
+                                    name = "$mainCategory/$subName",
+                                    items = subItems,
+                                    parent = mainCategory
+                                )
+                            }
+                            .sortedBy { it.name }
 
-                    val subCategories = subCategoryGroups.map { (subName, subItems) ->
                         ArchiveCategory(
-                            name = "$categoryName/$subName",
-                            items = subItems,
-                            parent = categoryName
+                            name = mainCategory,
+                            items = categoryItems.filter { it.subCategory.isEmpty() },
+                            subCategories = subCategories,
+                            parent = "latest"
                         )
-                    }.sortedBy { it.name }
-
-                    ArchiveCategory(
-                        name = categoryName,
-                        items = categoryItems.filter { it.subCategory.isEmpty() },
-                        subCategories = subCategories,
-                        parent = "latest"
-                    )
-                }.sortedBy { it.name }
+                    }
+                    .sortedBy { it.name }
 
                 val latestCategory = ArchiveCategory(
                     name = "latest",
@@ -266,7 +270,7 @@ class MainViewModel(
                 )
 
                 _categories.value = listOf(latestCategory)
-                if (_displayState.value == DisplayState.HOME) {
+                if (_displayState.value == DisplayState.HOME || _displayState.value == DisplayState.CATEGORY) {
                     _currentItems.value = _categories.value
                 }
             } catch (e: Exception) {
@@ -277,7 +281,6 @@ class MainViewModel(
             }
         }
     }
-
     fun fetchHomeCategories() {
         viewModelScope.launch {
             try {
@@ -324,140 +327,64 @@ class MainViewModel(
             }
         }
     }
-
-    fun fetchCategories() {
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun selectCategory(category: ArchiveCategory) {
         viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            lastSelectedCategory = category
+
             try {
-                _isLoading.value = true
-                _error.value = null
-
-                val mainCategories = listOf(
-                    ArchiveCategory(name = "texts", items = emptyList(), subCategories = emptyList(), parent = null),
-                    ArchiveCategory(name = "movies", items = emptyList(), subCategories = emptyList(), parent = null),
-                    ArchiveCategory(name = "audio", items = emptyList(), subCategories = emptyList(), parent = null),
-                    ArchiveCategory(name = "software", items = emptyList(), subCategories = emptyList(), parent = null),
-                    ArchiveCategory(name = "image", items = emptyList(), subCategories = emptyList(), parent = null),
-                    ArchiveCategory(name = "web", items = emptyList(), subCategories = emptyList(), parent = null),
-                    ArchiveCategory(name = "data", items = emptyList(), subCategories = emptyList(), parent = null),
-                    ArchiveCategory(name = "education", items = emptyList(), subCategories = emptyList(), parent = null),
-                    ArchiveCategory(name = "collection", items = emptyList(), subCategories = emptyList(), parent = null),
-                    ArchiveCategory(name = "journals", items = emptyList(), subCategories = emptyList(), parent = null),
-                    ArchiveCategory(name = "etree", items = emptyList(), subCategories = emptyList(), parent = null),
-                    ArchiveCategory(name = "prelinger", items = emptyList(), subCategories = emptyList(), parent = null),
-                    ArchiveCategory(name = "podcasts", items = emptyList(), subCategories = emptyList(), parent = null),
-                    ArchiveCategory(name = "radio", items = emptyList(), subCategories = emptyList(), parent = null),
-                    ArchiveCategory(name = "additional_collections", items = emptyList(), subCategories = emptyList(), parent = null)
-                )
-
-
-                if (_displayState.value == DisplayState.HOME) {
-                    _currentItems.value = _categories.value
+                when {
+                    category.name == "latest" -> {
+                        fetchLatestUploads()
+                    }
+                    category.parent == "latest" -> {
+                        setDisplayState(DisplayState.CATEGORY)
+                        loadCategory(category)
+                    }
+                    category.parent == "hot" -> {
+                        setDisplayState(DisplayState.CATEGORY)
+                        handleHotPeriodCategory(category)
+                    }
+                    category.name == "categories" -> {
+                        showMainCategories()
+                    }
+                    else -> {
+                        setDisplayState(DisplayState.CATEGORY)
+                        currentCategoryName = category.name
+                        currentCategoryPage = 1
+                        isCategoryLastPage = false
+                        loadCategory(category)
+                    }
                 }
-
             } catch (e: Exception) {
-                _error.value = e.message ?: "Unknown error occurred"
-                _categories.value = emptyList()
+                _error.value = "Failed to select category: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
         }
     }
-
-
-    fun selectCategory(category: ArchiveCategory) {
-        lastSelectedCategory = category
-        when (category.name) {
-            "latest" -> {
-                viewModelScope.launch {
-                    try {
-                        _isLoading.value = true
-                        val items = repository.getLatestUploads()
-
-                        val categoryGroups = items.groupBy { it.mainCategory }
-                        val mainCategories = categoryGroups.map { (categoryName, categoryItems) ->
-                            val subCategoryGroups = categoryItems
-                                .filter { it.subCategory.isNotEmpty() }
-                                .groupBy { it.subCategory }
-
-                            val subCategories = subCategoryGroups.map { (subName, subItems) ->
-                                ArchiveCategory(
-                                    name = "$categoryName/$subName",
-                                    items = subItems,
-                                    parent = categoryName
-                                )
-                            }.sortedBy { it.name }
-
-                            ArchiveCategory(
-                                name = categoryName,
-                                items = categoryItems.filter { it.subCategory.isEmpty() },
-                                subCategories = subCategories,
-                                parent = "latest"
-                            )
-                        }.sortedBy { it.name }
-
-                        val updatedCategory = category.copy(
-                            items = items,
-                            subCategories = mainCategories
-                        )
-
-                        _selectedCategoryItems.value = items
-                        if (_displayState.value == DisplayState.CATEGORY) {
-                            _currentItems.value = updatedCategory.subCategories
-                        }
-                    } finally {
-                        _isLoading.value = false
-                    }
-                }
-            }
-            "categories" -> {
-                viewModelScope.launch {
-                    try {
-                        _isLoading.value = true
-
-                        val mainCategories = listOf(
-                            ArchiveCategory(name = "texts", items = emptyList(), subCategories = emptyList(), parent = null),
-                            ArchiveCategory(name = "movies", items = emptyList(), subCategories = emptyList(), parent = null),
-                            ArchiveCategory(name = "audio", items = emptyList(), subCategories = emptyList(), parent = null),
-                            ArchiveCategory(name = "software", items = emptyList(), subCategories = emptyList(), parent = null),
-                            ArchiveCategory(name = "image", items = emptyList(), subCategories = emptyList(), parent = null),
-                            ArchiveCategory(name = "web", items = emptyList(), subCategories = emptyList(), parent = null),
-                            ArchiveCategory(name = "data", items = emptyList(), subCategories = emptyList(), parent = null),
-                            ArchiveCategory(name = "education", items = emptyList(), subCategories = emptyList(), parent = null),
-                            ArchiveCategory(name = "collection", items = emptyList(), subCategories = emptyList(), parent = null),
-                            ArchiveCategory(name = "journals", items = emptyList(), subCategories = emptyList(), parent = null),
-                            ArchiveCategory(name = "etree", items = emptyList(), subCategories = emptyList(), parent = null),
-                            ArchiveCategory(name = "prelinger", items = emptyList(), subCategories = emptyList(), parent = null),
-                            ArchiveCategory(name = "podcasts", items = emptyList(), subCategories = emptyList(), parent = null),
-                            ArchiveCategory(name = "radio", items = emptyList(), subCategories = emptyList(), parent = null),
-                            ArchiveCategory(name = "additional_collections", items = emptyList(), subCategories = emptyList(), parent = null)
-                        )
-
-                        if (_displayState.value == DisplayState.CATEGORY) {
-                            _currentItems.value = mainCategories
-                        }
-                    } finally {
-                        _isLoading.value = false
-                    }
-                }
-            }
-            "hot" -> {
-                handleHotCategory(category)
-            }
-            else -> {
-                if (category.parent == "latest") {
-                    loadCategory(category)
-                }
-                if(category.parent == "hot") {
-                    handleHotPeriodCategory(category)
-                }
-                    else {
-                    currentCategoryName = category.name
-                    currentCategoryPage = 1
-                    isCategoryLastPage = false
-                    loadCategory(category)
-                }
-            }
-        }
+    private fun showMainCategories() {
+        val mainCategories = listOf(
+            ArchiveCategory(name = "texts", items = emptyList(), subCategories = emptyList(), parent = "categories"),
+            ArchiveCategory(name = "texts", items = emptyList(), subCategories = emptyList(), parent = null),
+            ArchiveCategory(name = "movies", items = emptyList(), subCategories = emptyList(), parent = null),
+            ArchiveCategory(name = "audio", items = emptyList(), subCategories = emptyList(), parent = null),
+            ArchiveCategory(name = "software", items = emptyList(), subCategories = emptyList(), parent = null),
+            ArchiveCategory(name = "image", items = emptyList(), subCategories = emptyList(), parent = null),
+            ArchiveCategory(name = "web", items = emptyList(), subCategories = emptyList(), parent = null),
+            ArchiveCategory(name = "data", items = emptyList(), subCategories = emptyList(), parent = null),
+            ArchiveCategory(name = "education", items = emptyList(), subCategories = emptyList(), parent = null),
+            ArchiveCategory(name = "collection", items = emptyList(), subCategories = emptyList(), parent = null),
+            ArchiveCategory(name = "journals", items = emptyList(), subCategories = emptyList(), parent = null),
+            ArchiveCategory(name = "etree", items = emptyList(), subCategories = emptyList(), parent = null),
+            ArchiveCategory(name = "prelinger", items = emptyList(), subCategories = emptyList(), parent = null),
+            ArchiveCategory(name = "podcasts", items = emptyList(), subCategories = emptyList(), parent = null),
+            ArchiveCategory(name = "radio", items = emptyList(), subCategories = emptyList(), parent = null),
+            ArchiveCategory(name = "additional_collections", items = emptyList(), subCategories = emptyList(), parent = null)
+        )
+        _currentItems.value = mainCategories
     }
     private fun handleHotCategory(category: ArchiveCategory) {
         if (_displayState.value == DisplayState.CATEGORY) {
@@ -465,6 +392,7 @@ class MainViewModel(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun handleHotPeriodCategory(category: ArchiveCategory) {
         viewModelScope.launch {
             try {

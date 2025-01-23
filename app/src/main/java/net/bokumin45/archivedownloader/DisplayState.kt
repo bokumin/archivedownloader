@@ -4,5 +4,5 @@ enum class DisplayState {
     HOME,
     CATEGORY,
     FAVORITES,
-    SEARCH
+    SEARCH,
 }

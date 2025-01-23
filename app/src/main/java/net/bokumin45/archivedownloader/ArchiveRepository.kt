@@ -95,12 +95,11 @@ class ArchiveRepository(private val archiveService: ArchiveService) {
     suspend fun getCategoryItems(category: String, page: Int): List<ArchiveItem> {
         return try {
             val queryString = when {
-                category == "latest" -> "*" // すべてのアイテムを取得
+                category == "latest" -> "*"
                 category.contains("/") -> {
                     val (main, sub) = category.split("/")
                     "collection:$main AND mediatype:$sub"
                 }
-
                 else -> "collection:$category"
             }
 
