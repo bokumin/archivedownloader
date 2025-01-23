@@ -8,4 +8,10 @@
     <string name="search_hint">Input Search hint</string>
     <string name="navigation_drawer_open">Open</string>
     <string name="navigation_drawer_close">Close</string>
+    <string name="home" />
+    <string name="favorites" />
+    <string name="donate_archive" />
+    <string name="donate_website" />
+    <string name="donate" />
+    <string name="donate_message" />
 </resources>

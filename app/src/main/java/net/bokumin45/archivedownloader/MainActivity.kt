@@ -1,33 +1,29 @@
 package net.bokumin45.archivedownloader
 
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
-import android.view.Menu
-import android.view.MenuItem
 import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
-import android.widget.ArrayAdapter
 import android.widget.EditText
-import android.widget.Spinner
 import android.widget.Toast
 import androidx.annotation.RequiresApi
-import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.widget.SearchView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.children
-import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
-import com.google.android.material.navigation.NavigationView
+import com.leinardi.android.speeddial.SpeedDialActionItem
+import com.leinardi.android.speeddial.SpeedDialView
 import net.bokumin45.archivedownloader.databinding.ActivityMainBinding
 import kotlinx.coroutines.launch
 import net.bokumin45.archivedownloader.repository.ArchiveRepository
@@ -38,11 +34,7 @@ import retrofit2.converter.scalars.ScalarsConverterFactory
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var viewModel: MainViewModel
-    private lateinit var searchView: SearchView
     private var isSearchActive = false
-    private lateinit var drawerLayout: DrawerLayout
-    private lateinit var navigationView: NavigationView
-    private lateinit var toggle: ActionBarDrawerToggle
 
     @RequiresApi(Build.VERSION_CODES.O)
     private val categoryAdapter = CategoryAdapter { category ->
@@ -66,6 +58,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
     private val itemAdapter = ArchiveAdapter(
         onFavoriteClick = { item ->
             viewModel.toggleFavorite(item)
@@ -79,15 +72,81 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setSupportActionBar(binding.toolbar)
-        setupDrawer()
         setupRetrofitAndViewModel()
         setupRecyclerView()
+        setupSpeedDial()
         observeViewModel()
         setupSearchFab()
 
         showHome()
     }
+
+
+    private fun setupSpeedDial() {
+        val speedDial = binding.speedDial
+
+        speedDial.addActionItem(
+            SpeedDialActionItem.Builder(R.id.fab_home, R.drawable.ic_home)
+                .setLabel(getString(R.string.home))
+                .setFabBackgroundColor(ResourcesCompat.getColor(resources, R.color.primary, theme))
+                .setFabImageTintColor(Color.WHITE)
+                .create()
+        )
+
+        speedDial.addActionItem(
+            SpeedDialActionItem.Builder(R.id.fab_favorites, R.drawable.ic_favorite)
+                .setLabel(getString(R.string.favorites))
+                .setFabBackgroundColor(ResourcesCompat.getColor(resources, R.color.primary, theme))
+                .setFabImageTintColor(Color.WHITE)
+                .create()
+        )
+
+        speedDial.addActionItem(
+            SpeedDialActionItem.Builder(R.id.fab_donate_archive, R.drawable.ic_donate)
+                .setLabel(getString(R.string.donate_archive))
+                .setFabBackgroundColor(ResourcesCompat.getColor(resources, R.color.primary, theme))
+                .setFabImageTintColor(Color.WHITE)
+                .create()
+        )
+
+        speedDial.addActionItem(
+            SpeedDialActionItem.Builder(R.id.fab_donate_website, R.drawable.ic_donate)
+                .setLabel(getString(R.string.donate_website))
+                .setFabBackgroundColor(ResourcesCompat.getColor(resources, R.color.primary, theme))
+                .setFabImageTintColor(Color.WHITE)
+                .create()
+        )
+
+        speedDial.setExpansionMode(SpeedDialView.ExpansionMode.TOP)
+        speedDial.setOrientation(SpeedDialView.VERTICAL)
+
+        speedDial.setOnActionSelectedListener { actionItem ->
+            when (actionItem.id) {
+                R.id.fab_home -> {
+                    showHome()
+                    speedDial.close()
+                    true
+                }
+                R.id.fab_favorites -> {
+                    showFavorites()
+                    speedDial.close()
+                    true
+                }
+                R.id.fab_donate_archive -> {
+                    showConfirmationDialog("https://archive.org/donate/")
+                    speedDial.close()
+                    true
+                }
+                R.id.fab_donate_website -> {
+                    showConfirmationDialog("https://bokumin45.server-on.net")
+                    speedDial.close()
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
     private fun setupSearchFab() {
         binding.searchFab.setOnClickListener {
             showSearchDialog()
@@ -101,7 +160,6 @@ class MainActivity : AppCompatActivity() {
 
         lateinit var dialog: AlertDialog
 
-        // カテゴリーリストの定義
         val categoriesFirstRow = listOf(
             "Texts" to "texts",
             "Movies" to "movies",
@@ -123,7 +181,6 @@ class MainActivity : AppCompatActivity() {
             "Additional Collections" to "additional_collections"
         )
 
-        // ChipGroupにカテゴリーを追加（1行目）
         categoriesFirstRow.forEach { (displayName, value) ->
             val chip = Chip(this).apply {
                 text = displayName
@@ -133,7 +190,6 @@ class MainActivity : AppCompatActivity() {
             chipGroup.addView(chip)
         }
 
-        // 2行目のカテゴリーを追加
         categoriesSecondRow.forEach { (displayName, value) ->
             val chip = Chip(this).apply {
                 text = displayName
@@ -143,7 +199,6 @@ class MainActivity : AppCompatActivity() {
             chipGroup.addView(chip)
         }
 
-        // 検索実行の関数
         val executeSearch = {
             val query = editText.text.toString()
             if (query.isNotBlank()) {
@@ -159,7 +214,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // ダイアログを作成
         dialog = AlertDialog.Builder(this)
             .setTitle("Search")
             .setView(view)
@@ -169,7 +223,6 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("Cancel", null)
             .create()
 
-        // キーボードのエンターキーとSearchキーの処理
         editText.setOnEditorActionListener { _, actionId, event ->
             when {
                 actionId == EditorInfo.IME_ACTION_SEARCH -> {
@@ -189,6 +242,21 @@ class MainActivity : AppCompatActivity() {
         editText.requestFocus()
         dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
     }
+
+    private fun showDonateDialog() {
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.donate))
+            .setMessage(getString(R.string.donate_message))
+            .setPositiveButton("Archive.org") { _, _ ->
+                showConfirmationDialog("https://archive.org/donate/")
+            }
+            .setNeutralButton("Website") { _, _ ->
+                showConfirmationDialog("https://bokumin45.server-on.net")
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
     companion object {
         private const val VPN_REQUEST_CODE = 1
     }
@@ -203,44 +271,6 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
-    }
-    private fun setupDrawer() {
-        drawerLayout = binding.drawerLayout
-        navigationView = binding.navigationView
-
-        toggle = ActionBarDrawerToggle(
-            this,
-            drawerLayout,
-            binding.toolbar,
-            R.string.navigation_drawer_open,
-            R.string.navigation_drawer_close
-        )
-        drawerLayout.addDrawerListener(toggle)
-        toggle.syncState()
-
-        navigationView.setNavigationItemSelectedListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.nav_favorites -> {
-                    showFavorites()
-                    drawerLayout.closeDrawers()
-                    true
-                }
-                R.id.nav_home -> {
-                    showHome()
-                    drawerLayout.closeDrawers()
-                    true
-                }
-                R.id.nav_donate_archive -> {
-                    showConfirmationDialog("https://archive.org/donate/")
-                    true
-                }
-                R.id.nav_donate_website -> {
-                    showConfirmationDialog("https://bokumin45.server-on.net")
-                    true
-                }
-                else -> false
-            }
-        }
     }
 
     private fun setupRetrofitAndViewModel() {
@@ -318,53 +348,14 @@ class MainActivity : AppCompatActivity() {
     private fun showCategoryItems(category: ArchiveCategory) {
         viewModel.setDisplayState(DisplayState.CATEGORY)
         viewModel.selectCategory(category)
-        supportActionBar?.title = category.name
     }
 
     private fun showFavorites() {
         viewModel.setDisplayState(DisplayState.FAVORITES)
-        supportActionBar?.title = "Favorites"
     }
 
     private fun showHome() {
         viewModel.setDisplayState(DisplayState.HOME)
         viewModel.fetchHomeCategories()
-        supportActionBar?.title = getString(R.string.app_name)
-    }
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (toggle.onOptionsItemSelected(item)) {
-            return true
-        }
-        return super.onOptionsItemSelected(item)
-    }
-
-    private fun setupSearchView() {
-        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                query?.let {
-                    viewModel.setDisplayState(DisplayState.SEARCH)
-                    isSearchActive = true
-                    viewModel.search(it)
-                    searchView.clearFocus()
-                }
-                return true
-            }
-
-            override fun onQueryTextChange(newText: String?): Boolean {
-                if (newText.isNullOrBlank() && isSearchActive) {
-                    isSearchActive = false
-                    showHome()
-                }
-                return true
-            }
-        })
-
-        searchView.setOnCloseListener {
-            if (isSearchActive) {
-                isSearchActive = false
-                showHome()
-            }
-            false
-        }
     }
 }

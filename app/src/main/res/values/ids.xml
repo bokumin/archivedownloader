@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="fab_home" type="id"/>
+    <item name="fab_favorites" type="id"/>
+    <item name="fab_donate_archive" type="id"/>
+    <item name="fab_donate_website" type="id"/>
+</resources>
