@@ -20,6 +20,16 @@ interface ArchiveService {
         @Query("page") page: Int = 1
     ): SearchResponse
 
+    @GET("advancedsearch.php")
+    suspend fun getHotItems(
+        @Query("q") query: String,
+        @Query("fl[]") fields: List<String>,
+        @Query("sort[]") sorts: List<String>,
+        @Query("output") output: String = "json",
+        @Query("rows") rows: Int = 50,
+        @Query("page") page: Int = 1
+    ): SearchResponse
+
     suspend fun getCategoryItems(
         @Path("category") category: String,
         @Query("page") page: Int = 1,

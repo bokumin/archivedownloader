@@ -36,6 +36,9 @@ class MainViewModel(
     private val _favoriteItems = MutableStateFlow<List<ArchiveItem>>(emptyList())
     val favoriteItems: StateFlow<List<ArchiveItem>> = _favoriteItems
 
+    private val _hotPeriod = MutableStateFlow<HotPeriod>(HotPeriod.WEEK)
+    val hotPeriod: StateFlow<HotPeriod> = _hotPeriod
+
     private var lastSelectedCategory: ArchiveCategory? = null
     private var currentSearchJob: Job? = null
     private var currentPage = 1
@@ -288,6 +291,18 @@ class MainViewModel(
                     parent = null
                 )
 
+                val hotCategory = ArchiveCategory(
+                    name = "hot",
+                    items = emptyList(),
+                    subCategories = listOf(
+                        ArchiveCategory(name = "day", displayName = "Last 24 Hours", items = emptyList(), parent = "hot"),
+                        ArchiveCategory(name = "week", displayName = "Last Week", items = emptyList(), parent = "hot"),
+                        ArchiveCategory(name = "month", displayName = "Last Month", items = emptyList(), parent = "hot"),
+                        ArchiveCategory(name = "year", displayName = "Last Year", items = emptyList(), parent = "hot")
+                    ),
+                    parent = null
+                )
+
                 val categoriesCategory = ArchiveCategory(
                     name = "categories",
                     items = emptyList(),
@@ -295,7 +310,7 @@ class MainViewModel(
                     parent = null
                 )
 
-                _categories.value = listOf(latestCategory, categoriesCategory)
+                _categories.value = listOf(latestCategory, hotCategory, categoriesCategory)
 
                 if (_displayState.value == DisplayState.HOME) {
                     _currentItems.value = _categories.value
@@ -309,6 +324,7 @@ class MainViewModel(
             }
         }
     }
+
     fun fetchCategories() {
         viewModelScope.launch {
             try {
@@ -357,7 +373,6 @@ class MainViewModel(
                         _isLoading.value = true
                         val items = repository.getLatestUploads()
 
-                        // Create subcategories based on the latest items
                         val categoryGroups = items.groupBy { it.mainCategory }
                         val mainCategories = categoryGroups.map { (categoryName, categoryItems) ->
                             val subCategoryGroups = categoryItems
@@ -425,15 +440,54 @@ class MainViewModel(
                     }
                 }
             }
+            "hot" -> {
+                handleHotCategory(category)
+            }
             else -> {
                 if (category.parent == "latest") {
                     loadCategory(category)
-                } else {
+                }
+                if(category.parent == "hot") {
+                    handleHotPeriodCategory(category)
+                }
+                    else {
                     currentCategoryName = category.name
                     currentCategoryPage = 1
                     isCategoryLastPage = false
                     loadCategory(category)
                 }
+            }
+        }
+    }
+    private fun handleHotCategory(category: ArchiveCategory) {
+        if (_displayState.value == DisplayState.CATEGORY) {
+            _currentItems.value = category.subCategories
+        }
+    }
+
+    private fun handleHotPeriodCategory(category: ArchiveCategory) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                val period = when (category.name) {
+                    "day" -> HotPeriod.DAY
+                    "week" -> HotPeriod.WEEK
+                    "month" -> HotPeriod.MONTH
+                    "year" -> HotPeriod.YEAR
+                    else -> HotPeriod.WEEK
+                }
+                _hotPeriod.value = period
+
+                val items = repository.getHotItems(period)
+                _selectedCategoryItems.value = items
+
+                if (_displayState.value == DisplayState.CATEGORY) {
+                    _currentItems.value = items
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to load hot items: ${e.message}"
+            } finally {
+                _isLoading.value = false
             }
         }
     }

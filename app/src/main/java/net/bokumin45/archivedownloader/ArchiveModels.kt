@@ -2,11 +2,11 @@ package net.bokumin45.archivedownloader
 
 data class ArchiveCategory(
     val name: String,
+    val displayName: String = name,
     val items: List<ArchiveItem>,
     val subCategories: List<ArchiveCategory> = emptyList(),
     val parent: String? = null
 ) {
-    val displayName: String get() = name.substringAfterLast('/')
     val totalItemCount: Int get() = items.size + subCategories.sumOf { it.totalItemCount }
 }
 

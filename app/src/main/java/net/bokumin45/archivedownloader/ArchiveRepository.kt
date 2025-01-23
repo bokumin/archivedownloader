@@ -1,8 +1,11 @@
 package net.bokumin45.archivedownloader.repository
 
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import net.bokumin45.archivedownloader.ArchiveItem
 import net.bokumin45.archivedownloader.ArchiveService
+import net.bokumin45.archivedownloader.HotPeriod
 import net.bokumin45.archivedownloader.SearchResponse
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
@@ -38,33 +41,42 @@ class ArchiveRepository(private val archiveService: ArchiveService) {
                             itemCount++
                             Log.d("ArchiveRepository", "Processing item #$itemCount")
                         }
+
                         "title" -> if (insideItem) {
                             currentTitle = parser.nextText().trim()
                             Log.d("ArchiveRepository", "Title: $currentTitle")
                         }
+
                         "link" -> if (insideItem) {
                             currentLink = parser.nextText().trim()
                             Log.d("ArchiveRepository", "Link: $currentLink")
                         }
+
                         "category" -> if (insideItem) {
                             currentCategory = parser.nextText().trim()
                             Log.d("ArchiveRepository", "Category: $currentCategory")
                         }
                     }
                 }
+
                 XmlPullParser.END_TAG -> {
                     if (parser.name == "item") {
                         if (currentTitle.isNotEmpty() && currentLink.isNotEmpty() && currentCategory.isNotEmpty()) {
                             val identifier = currentLink.substringAfterLast("/")
-                            items.add(ArchiveItem(
-                                title = currentTitle,
-                                link = currentLink,
-                                category = currentCategory,
-                                identifier = identifier
-                            ))
+                            items.add(
+                                ArchiveItem(
+                                    title = currentTitle,
+                                    link = currentLink,
+                                    category = currentCategory,
+                                    identifier = identifier
+                                )
+                            )
                             Log.d("ArchiveRepository", "Added item: $identifier")
                         } else {
-                            Log.w("ArchiveRepository", "Skipped incomplete item - Title: $currentTitle, Link: $currentLink, Category: $currentCategory")
+                            Log.w(
+                                "ArchiveRepository",
+                                "Skipped incomplete item - Title: $currentTitle, Link: $currentLink, Category: $currentCategory"
+                            )
                         }
                         insideItem = false
                         currentTitle = ""
@@ -88,6 +100,7 @@ class ArchiveRepository(private val archiveService: ArchiveService) {
                     val (main, sub) = category.split("/")
                     "collection:$main AND mediatype:$sub"
                 }
+
                 else -> "collection:$category"
             }
 
@@ -110,5 +123,51 @@ class ArchiveRepository(private val archiveService: ArchiveService) {
             rows = 50,
             page = page
         )
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun getHotItems(period: HotPeriod): List<ArchiveItem> {
+        val now = java.time.LocalDate.now()
+        val dateQuery = when (period) {
+            HotPeriod.DAY -> {
+                val dayAgo = now.minusDays(1)
+                "addeddate:[${dayAgo} TO ${now}]"
+            }
+            HotPeriod.WEEK -> {
+                val weekAgo = now.minusWeeks(1)
+                "addeddate:[${weekAgo} TO ${now}]"
+            }
+            HotPeriod.MONTH -> {
+                val monthAgo = now.minusMonths(1)
+                "addeddate:[${monthAgo} TO ${now}]"
+            }
+            HotPeriod.YEAR -> {
+                val yearAgo = now.minusYears(1)
+                "addeddate:[${yearAgo} TO ${now}]"
+            }
+        }
+
+        val sorts = when (period) {
+            HotPeriod.DAY -> listOf("-downloads", "-addeddate")
+            HotPeriod.WEEK -> listOf("-downloads", "-addeddate")
+            HotPeriod.MONTH -> listOf("-addeddate", "-downloads")
+            HotPeriod.YEAR -> listOf("-downloads", "-addeddate")
+        }
+
+        return try {
+            Log.d("ArchiveRepository", "Date Query: $dateQuery")
+            Log.d("ArchiveRepository", "Sorts: $sorts")
+
+            val response = archiveService.getHotItems(
+                query = dateQuery,
+                fields = listOf("identifier", "title", "mediatype", "downloads", "addeddate"),
+                sorts = sorts,
+                rows = 50
+            )
+            response.response.docs.map { it.toArchiveItem() }
+        } catch (e: Exception) {
+            Log.e("ArchiveRepository", "Error fetching hot items", e)
+            throw Exception("Failed to fetch hot items: ${e.message}")
+        }
     }
 }
