@@ -101,6 +101,7 @@ class MainActivity : AppCompatActivity() {
 
         lateinit var dialog: AlertDialog
 
+        // カテゴリーリストの定義
         val categoriesFirstRow = listOf(
             "Texts" to "texts",
             "Movies" to "movies",
@@ -122,6 +123,7 @@ class MainActivity : AppCompatActivity() {
             "Additional Collections" to "additional_collections"
         )
 
+        // ChipGroupにカテゴリーを追加（1行目）
         categoriesFirstRow.forEach { (displayName, value) ->
             val chip = Chip(this).apply {
                 text = displayName
@@ -131,6 +133,7 @@ class MainActivity : AppCompatActivity() {
             chipGroup.addView(chip)
         }
 
+        // 2行目のカテゴリーを追加
         categoriesSecondRow.forEach { (displayName, value) ->
             val chip = Chip(this).apply {
                 text = displayName
@@ -140,6 +143,7 @@ class MainActivity : AppCompatActivity() {
             chipGroup.addView(chip)
         }
 
+        // 検索実行の関数
         val executeSearch = {
             val query = editText.text.toString()
             if (query.isNotBlank()) {
@@ -155,6 +159,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // ダイアログを作成
         dialog = AlertDialog.Builder(this)
             .setTitle("Search")
             .setView(view)
@@ -164,6 +169,7 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("Cancel", null)
             .create()
 
+        // キーボードのエンターキーとSearchキーの処理
         editText.setOnEditorActionListener { _, actionId, event ->
             when {
                 actionId == EditorInfo.IME_ACTION_SEARCH -> {

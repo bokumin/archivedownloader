@@ -6,11 +6,13 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.view.View
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import com.bumptech.glide.Glide
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import net.bokumin45.archivedownloader.databinding.ActivityDetailBinding
 import kotlinx.coroutines.launch
@@ -28,11 +30,18 @@ class DetailActivity : AppCompatActivity() {
 
         binding = ActivityDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        identifier = intent.getStringExtra(EXTRA_IDENTIFIER) ?: return
+        val thumbnailUrl = ArchiveService.getThumbnailUrl(identifier)
+
+        val thumbnailImageView: ImageView = findViewById(R.id.thumbnailImageView)
+        Glide.with(this)
+            .load(thumbnailUrl)
+            .into(thumbnailImageView)
+
         binding.closeButton.setOnClickListener {
             finish()
         }
-
-        identifier = intent.getStringExtra(EXTRA_IDENTIFIER) ?: return
 
         setupRetrofit()
         setupRecyclerView()
