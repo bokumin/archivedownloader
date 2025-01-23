@@ -10,8 +10,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
-import com.bumptech.glide.Glide
+import androidx.recyclerview.widget.GridLayoutManager
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import net.bokumin45.archivedownloader.databinding.ActivityDetailBinding
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
@@ -25,13 +25,19 @@ class DetailActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         binding = ActivityDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.closeButton.setOnClickListener {
+            finish()
+        }
 
         identifier = intent.getStringExtra(EXTRA_IDENTIFIER) ?: return
+
         setupRetrofit()
         setupRecyclerView()
         loadMetadata()
+
     }
 
     private fun setupRetrofit() {
@@ -49,7 +55,7 @@ class DetailActivity : AppCompatActivity() {
         }
 
         binding.fileList.apply {
-            layoutManager = LinearLayoutManager(this@DetailActivity)
+            layoutManager = GridLayoutManager(this@DetailActivity, 2)
             adapter = fileAdapter
         }
     }
@@ -81,6 +87,7 @@ class DetailActivity : AppCompatActivity() {
             }
         }
     }
+
     private fun downloadFile(file: ArchiveFile) {
         val downloadUrl = "${ArchiveService.BASE_URL}download/$identifier/${Uri.encode(file.name)}"
         val request = DownloadManager.Request(Uri.parse(downloadUrl))
