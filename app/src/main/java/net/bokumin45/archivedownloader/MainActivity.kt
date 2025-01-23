@@ -7,6 +7,9 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.WindowManager
+import android.view.inputmethod.EditorInfo
+import android.widget.EditText
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.ActionBarDrawerToggle
@@ -75,8 +78,52 @@ class MainActivity : AppCompatActivity() {
         setupRetrofitAndViewModel()
         setupRecyclerView()
         observeViewModel()
+        setupSearchFab()
 
         showHome()
+    }
+    private fun setupSearchFab() {
+        binding.searchFab.setOnClickListener {
+            showSearchDialog()
+        }
+    }
+
+    private fun showSearchDialog() {
+        val editText = EditText(this).apply {
+            setSingleLine()
+            imeOptions = EditorInfo.IME_ACTION_SEARCH
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Search")
+            .setView(editText)
+            .setPositiveButton("Search") { _, _ ->
+                val query = editText.text.toString()
+                if (query.isNotBlank()) {
+                    viewModel.setDisplayState(DisplayState.SEARCH)
+                    viewModel.search(query)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .create()
+
+        editText.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                val query = editText.text.toString()
+                if (query.isNotBlank()) {
+                    viewModel.setDisplayState(DisplayState.SEARCH)
+                    viewModel.search(query)
+                    dialog.dismiss()
+                    return@setOnEditorActionListener true
+                }
+            }
+            false
+        }
+
+        dialog.show()
+
+        editText.requestFocus()
+        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
     }
 
     companion object {
@@ -221,15 +268,6 @@ class MainActivity : AppCompatActivity() {
         viewModel.fetchHomeCategories()
         supportActionBar?.title = getString(R.string.app_name)
     }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.main_menu, menu)
-        val searchItem = menu.findItem(R.id.action_search)
-        searchView = searchItem.actionView as SearchView
-        setupSearchView()
-        return true
-    }
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (toggle.onOptionsItemSelected(item)) {
             return true
