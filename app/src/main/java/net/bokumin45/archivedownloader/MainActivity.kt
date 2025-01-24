@@ -45,15 +45,18 @@ class MainActivity : AppCompatActivity() {
                 viewModel.fetchLatestUploads()
                 supportActionBar?.title = "Latest Uploads"
             }
+
             category.parent == "latest" -> {
                 viewModel.loadCategory(category)
                 supportActionBar?.title = category.name
             }
+
             category.subCategories.isNotEmpty() -> {
                 viewModel.setDisplayState(DisplayState.CATEGORY)
                 viewModel.selectCategory(category)
                 supportActionBar?.title = category.name
             }
+
             else -> {
                 viewModel.loadCategory(category)
                 showCategoryItems(category)
@@ -226,10 +229,12 @@ class MainActivity : AppCompatActivity() {
                     executeSearch()
                     true
                 }
+
                 event?.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_UP -> {
                     executeSearch()
                     true
                 }
+
                 else -> false
             }
         }
@@ -341,6 +346,7 @@ class MainActivity : AppCompatActivity() {
                         binding.recyclerView.adapter = categoryAdapter
                         categoryAdapter.submitCategoryList(items as List<ArchiveCategory>)
                     }
+
                     is ArchiveItem -> {
                         binding.recyclerView.adapter = itemAdapter
                         itemAdapter.submitList(items as List<ArchiveItem>)
@@ -385,12 +391,29 @@ class MainActivity : AppCompatActivity() {
             binding.speedDial.isOpen -> {
                 binding.speedDial.close()
             }
+
             viewModel.displayState.value == DisplayState.CATEGORY -> {
                 val lastCategory = viewModel.getLastSelectedCategory()
+                if (lastCategory?.name == "latest") {
+                    showHome()
+                } else if (lastCategory?.parent == "latest") {
+                    viewModel.selectCategory(
+                        ArchiveCategory(
+                            name = "latest",
+                            displayName = "Latest Updates",
+                            items = emptyList(),
+                            subCategories = emptyList()
+                        )
+                    )
+                } else {
+                    showHome()
+                }
             }
+
             viewModel.displayState.value != DisplayState.HOME -> {
                 showHome()
             }
+
             else -> {
                 super.onBackPressed()
             }

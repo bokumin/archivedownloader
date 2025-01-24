@@ -1,5 +1,6 @@
 package net.bokumin45.archivedownloader
 
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
@@ -7,7 +8,6 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.card.MaterialCardView
-import com.google.android.material.R as MaterialR
 
 class CategoryAdapter(
     private val onCategoryClick: (ArchiveCategory) -> Unit
@@ -37,11 +37,6 @@ class CategoryAdapter(
             radius = (8 * context.resources.displayMetrics.density)
             cardElevation = (2 * context.resources.displayMetrics.density)
             useCompatPadding = true
-
-            strokeWidth = (1 * context.resources.displayMetrics.density).toInt()
-            val typedValue = android.util.TypedValue()
-            context.theme.resolveAttribute(MaterialR.attr.colorPrimary, typedValue, true)
-            strokeColor = typedValue.data
         }
 
         val textView = TextView(parent.context).apply {
@@ -51,7 +46,7 @@ class CategoryAdapter(
             )
             val padding = (16 * context.resources.displayMetrics.density).toInt()
             setPadding(padding, padding, padding, padding)
-            textSize = 20f
+            textSize = 16f
         }
 
         cardView.addView(textView)
@@ -64,10 +59,7 @@ class CategoryAdapter(
     }
 
     fun submitCategoryList(categories: List<ArchiveCategory>) {
-        val mainCategories = categories.filter { category ->
-            category.name == "hot" || category.subCategories.isEmpty()
-        }
-        val flattenedList = flattenCategories(mainCategories)
+        val flattenedList = flattenCategories(categories)
         submitList(flattenedList)
     }
 
@@ -77,10 +69,7 @@ class CategoryAdapter(
     ): List<CategoryListItem> {
         return categories.flatMap { category ->
             listOf(CategoryListItem.CategoryItem(category, level)) +
-                    when (category.name) {
-                        "hot" -> flattenCategories(category.subCategories, level + 1)
-                        else -> emptyList()
-                    }
+                    flattenCategories(category.subCategories, level + 1)
         }
     }
 
