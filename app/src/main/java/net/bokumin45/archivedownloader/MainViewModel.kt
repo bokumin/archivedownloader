@@ -491,7 +491,6 @@ class MainViewModel(
     }
     private fun showMainCategories() {
         val mainCategories = listOf(
-            ArchiveCategory(name = "texts", items = emptyList(), subCategories = emptyList(), parent = "categories"),
             ArchiveCategory(name = "texts", items = emptyList(), subCategories = emptyList(), parent = null),
             ArchiveCategory(name = "movies", items = emptyList(), subCategories = emptyList(), parent = null),
             ArchiveCategory(name = "audio", items = emptyList(), subCategories = emptyList(), parent = null),

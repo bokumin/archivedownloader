@@ -64,14 +64,10 @@ class CategoryAdapter(
     }
 
     fun submitCategoryList(categories: List<ArchiveCategory>) {
-        val processedCategories = categories.map { category ->
-            if (category.name == "hot") {
-                category.copy(subCategories = emptyList())
-            } else {
-                category
-            }
+        val mainCategories = categories.filter { category ->
+            category.name == "hot" || category.subCategories.isEmpty()
         }
-        val flattenedList = flattenCategories(processedCategories)
+        val flattenedList = flattenCategories(mainCategories)
         submitList(flattenedList)
     }
 
@@ -81,7 +77,10 @@ class CategoryAdapter(
     ): List<CategoryListItem> {
         return categories.flatMap { category ->
             listOf(CategoryListItem.CategoryItem(category, level)) +
-                    flattenCategories(category.subCategories, level + 1)
+                    when (category.name) {
+                        "hot" -> flattenCategories(category.subCategories, level + 1)
+                        else -> emptyList()
+                    }
         }
     }
 
