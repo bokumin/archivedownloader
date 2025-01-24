@@ -391,7 +391,30 @@ class MainActivity : AppCompatActivity() {
                 binding.speedDial.close()
             }
 
+            viewModel.getLastSelectedCategory()?.parent == "latest" -> {
+                viewModel.selectCategory(
+                    ArchiveCategory(
+                        name = "latest",
+                        displayName = "Latest Updates",
+                        items = emptyList(),
+                        subCategories = emptyList()
+                    )
+                )
+            }
+
+            viewModel.getLastSelectedCategory()?.name == "latest" &&
+                    viewModel.displayState.value == DisplayState.CATEGORY -> {
+                showHome()
+            }
+
             viewModel.displayState.value == DisplayState.CATEGORY -> {
+                viewModel.getLastSelectedCategory()?.parent?.let { parentName ->
+                    val parentCategory = viewModel.categories.value.find { it.name == parentName }
+                    parentCategory?.let {
+                        viewModel.selectCategory(it)
+                        return
+                    }
+                }
                 showHome()
             }
 
@@ -399,12 +422,12 @@ class MainActivity : AppCompatActivity() {
                 showHome()
             }
 
+            viewModel.displayState.value == DisplayState.HOME &&
+                    viewModel.getLastSelectedCategory()?.name == "latest" -> {
+                showHome()
+            }
             else -> {
-                if (viewModel.getLastSelectedCategory()?.name == "latest") {
-                    showHome()
-                } else {
-                    super.onBackPressed()
-                }
+                super.onBackPressed()
             }
         }
     }
