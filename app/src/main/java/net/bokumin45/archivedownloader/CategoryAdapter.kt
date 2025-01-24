@@ -1,6 +1,5 @@
 package net.bokumin45.archivedownloader
 
-import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
@@ -14,10 +13,6 @@ class CategoryAdapter(
 ) : ListAdapter<CategoryAdapter.CategoryListItem, CategoryAdapter.ViewHolder>(CategoryDiffCallback()) {
 
     private var isLatestSelected: Boolean = false
-    fun updateLatestState(isLatest: Boolean) {
-        isLatestSelected = isLatest
-        notifyDataSetChanged()
-    }
     sealed class CategoryListItem {
         data class CategoryItem(
             val category: ArchiveCategory,

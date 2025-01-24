@@ -1,12 +1,8 @@
-package net.bokumin45.archivedownloader.repository
+package net.bokumin45.archivedownloader
 
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
-import net.bokumin45.archivedownloader.ArchiveItem
-import net.bokumin45.archivedownloader.ArchiveService
-import net.bokumin45.archivedownloader.HotPeriod
-import net.bokumin45.archivedownloader.SearchResponse
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
 

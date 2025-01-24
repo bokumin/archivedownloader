@@ -1,9 +1,10 @@
+package net.bokumin45.archivedownloader
+
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import net.bokumin45.archivedownloader.ArchiveFile
 import net.bokumin45.archivedownloader.databinding.ItemFileBinding
 
 class ArchiveFileAdapter(

@@ -1,6 +1,5 @@
 package net.bokumin45.archivedownloader
 
-import ArchiveFileAdapter
 import android.app.DownloadManager
 import android.net.Uri
 import android.os.Bundle

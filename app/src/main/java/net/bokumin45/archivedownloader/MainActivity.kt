@@ -28,7 +28,6 @@ import com.google.android.material.chip.ChipGroup
 import com.leinardi.android.speeddial.SpeedDialActionItem
 import net.bokumin45.archivedownloader.databinding.ActivityMainBinding
 import kotlinx.coroutines.launch
-import net.bokumin45.archivedownloader.repository.ArchiveRepository
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
