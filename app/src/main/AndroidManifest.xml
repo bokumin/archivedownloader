@@ -29,15 +29,6 @@
             android:name=".DetailActivity"
             android:exported="false" />
 
-        <service
-            android:name=".ArchiveVpnService"
-            android:permission="android.permission.BIND_VPN_SERVICE"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.net.VpnService"/>
-            </intent-filter>
-        </service>
-
     </application>
 
 </manifest>

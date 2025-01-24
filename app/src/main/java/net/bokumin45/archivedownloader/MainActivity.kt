@@ -26,7 +26,6 @@ import com.bumptech.glide.Glide
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.leinardi.android.speeddial.SpeedDialActionItem
-import com.leinardi.android.speeddial.SpeedDialView
 import net.bokumin45.archivedownloader.databinding.ActivityMainBinding
 import kotlinx.coroutines.launch
 import net.bokumin45.archivedownloader.repository.ArchiveRepository
@@ -380,13 +379,30 @@ class MainActivity : AppCompatActivity() {
         viewModel.fetchHomeCategories()
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onBackPressed() {
         when {
             binding.speedDial.isOpen -> {
                 binding.speedDial.close()
             }
+            viewModel.displayState.value == DisplayState.CATEGORY -> {
+                val lastCategory = viewModel.getLastSelectedCategory()
+                if (lastCategory?.name == "latest") {
+                    showHome()
+                } else if (lastCategory?.parent == "latest") {
+                    viewModel.selectCategory(ArchiveCategory(
+                        name = "latest",
+                        displayName = "Latest Updates",
+                        items = emptyList(),
+                        subCategories = emptyList()
+                    ))
+                } else {
+                    showHome()
+                }
+            }
             viewModel.displayState.value != DisplayState.HOME -> {
-                showHome()}
+                showHome()
+            }
             else -> {
                 super.onBackPressed()
             }

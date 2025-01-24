@@ -35,5 +35,6 @@ dependencies {
     implementation 'androidx.room:room-common:2.6.1'
     implementation 'androidx.room:room-ktx:2.6.1'
     implementation 'com.leinardi.android:speed-dial:3.3.0'
-    
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+
 }

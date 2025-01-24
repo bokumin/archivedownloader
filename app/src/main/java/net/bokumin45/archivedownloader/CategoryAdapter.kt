@@ -1,12 +1,13 @@
 package net.bokumin45.archivedownloader
 
-import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.card.MaterialCardView
+import com.google.android.material.R as MaterialR
 
 class CategoryAdapter(
     private val onCategoryClick: (ArchiveCategory) -> Unit
@@ -25,9 +26,37 @@ class CategoryAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(android.R.layout.simple_list_item_1, parent, false)
-        return ViewHolder(view)
+        val cardView = MaterialCardView(parent.context).apply {
+            layoutParams = ViewGroup.MarginLayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                val margin = (8 * context.resources.displayMetrics.density).toInt()
+                setMargins(margin, margin, margin, margin)
+            }
+            radius = (8 * context.resources.displayMetrics.density)
+            cardElevation = (2 * context.resources.displayMetrics.density)
+            useCompatPadding = true
+
+            strokeWidth = (1 * context.resources.displayMetrics.density).toInt()
+            val typedValue = android.util.TypedValue()
+            context.theme.resolveAttribute(MaterialR.attr.colorPrimary, typedValue, true)
+            strokeColor = typedValue.data
+        }
+
+        val textView = TextView(parent.context).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            val padding = (16 * context.resources.displayMetrics.density).toInt()
+            setPadding(padding, padding, padding, padding)
+            textSize = 20f
+        }
+
+        cardView.addView(textView)
+
+        return ViewHolder(cardView)
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
@@ -35,7 +64,14 @@ class CategoryAdapter(
     }
 
     fun submitCategoryList(categories: List<ArchiveCategory>) {
-        val flattenedList = flattenCategories(categories)
+        val processedCategories = categories.map { category ->
+            if (category.name == "hot") {
+                category.copy(subCategories = emptyList())
+            } else {
+                category
+            }
+        }
+        val flattenedList = flattenCategories(processedCategories)
         submitList(flattenedList)
     }
 
@@ -49,8 +85,9 @@ class CategoryAdapter(
         }
     }
 
-    inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        private val textView: TextView = view.findViewById(android.R.id.text1)
+    inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val cardView = itemView as MaterialCardView
+        private val textView = cardView.getChildAt(0) as TextView
 
         fun bind(item: CategoryListItem) {
             when (item) {
@@ -67,14 +104,34 @@ class CategoryAdapter(
                     }
 
                     textView.text = displayName
-                    itemView.setOnClickListener {
-                        onCategoryClick(category)
+
+                    val indentMargin = (16 * item.level * cardView.resources.displayMetrics.density).toInt()
+                    if (cardView.layoutParams is ViewGroup.MarginLayoutParams) {
+                        val params = cardView.layoutParams as ViewGroup.MarginLayoutParams
+                        val baseMargin = (8 * cardView.resources.displayMetrics.density).toInt()
+                        params.leftMargin = baseMargin + indentMargin
+                        params.topMargin = baseMargin
+                        params.rightMargin = baseMargin
+                        params.bottomMargin = baseMargin
+                        cardView.layoutParams = params
+                    }
+
+                    cardView.apply {
+                        setCardBackgroundColor(context.getColor(android.R.color.white))
+                        cardElevation = (2 * resources.displayMetrics.density)
+                        radius = (8 * resources.displayMetrics.density)
+
+                        isClickable = true
+                        isFocusable = true
+
+                        setOnClickListener {
+                            onCategoryClick(category)
+                        }
                     }
                 }
             }
         }
     }
-
 
     private class CategoryDiffCallback : DiffUtil.ItemCallback<CategoryListItem>() {
         override fun areItemsTheSame(oldItem: CategoryListItem, newItem: CategoryListItem): Boolean {
@@ -90,5 +147,4 @@ class CategoryAdapter(
             return oldItem == newItem
         }
     }
-
 }

@@ -13,7 +13,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import com.bumptech.glide.Glide
-import com.google.android.material.bottomsheet.BottomSheetDialog
 import net.bokumin45.archivedownloader.databinding.ActivityDetailBinding
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
@@ -31,6 +30,7 @@ class DetailActivity : AppCompatActivity() {
         binding = ActivityDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+
         identifier = intent.getStringExtra(EXTRA_IDENTIFIER) ?: return
         val thumbnailUrl = ArchiveService.getThumbnailUrl(identifier)
 
@@ -38,10 +38,6 @@ class DetailActivity : AppCompatActivity() {
         Glide.with(this)
             .load(thumbnailUrl)
             .into(thumbnailImageView)
-
-        binding.closeButton.setOnClickListener {
-            finish()
-        }
 
         setupRetrofit()
         setupRecyclerView()
