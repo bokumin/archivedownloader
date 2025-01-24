@@ -5,4 +5,5 @@
     <item name="fab_donate_archive" type="id"/>
     <item name="fab_donate_website" type="id"/>
     <item name="fab_donate" type="id" />
+    <item name="fab_info" type="id" />
 </resources>

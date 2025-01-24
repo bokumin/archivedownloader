@@ -78,61 +78,72 @@ class MainActivity : AppCompatActivity() {
         setupRetrofitAndViewModel()
         setupRecyclerView()
         setupSpeedDial()
+        setupFabs()
         observeViewModel()
-        setupSearchFab()
 
         showHome()
     }
 
+    private fun setupFabs() {
+        binding.homeFab.setOnClickListener {
+            showHome()
+        }
+
+        binding.favoriteFab.setOnClickListener {
+            showFavorites()
+        }
+
+        binding.searchFab.setOnClickListener {
+            showSearchDialog()
+        }
+    }
 
     private fun setupSpeedDial() {
         val speedDial = binding.speedDial
 
         speedDial.addActionItem(
-            SpeedDialActionItem.Builder(R.id.fab_home, R.drawable.ic_home)
-                .setLabel(getString(R.string.home))
-                .setFabBackgroundColor(ResourcesCompat.getColor(resources, R.color.primary, theme))
-                .setFabImageTintColor(Color.WHITE)
-                .create()
-        )
-
-        speedDial.addActionItem(
-            SpeedDialActionItem.Builder(R.id.fab_favorites, R.drawable.ic_favorite)
-                .setLabel(getString(R.string.favorites))
-                .setFabBackgroundColor(ResourcesCompat.getColor(resources, R.color.primary, theme))
-                .setFabImageTintColor(Color.WHITE)
-                .create()
-        )
-
-        speedDial.addActionItem(
             SpeedDialActionItem.Builder(R.id.fab_donate, R.drawable.ic_donate)
                 .setLabel(getString(R.string.donate))
-                .setFabBackgroundColor(ResourcesCompat.getColor(resources, R.color.primary, theme))
+                .setFabBackgroundColor(ResourcesCompat.getColor(resources, R.color.teal_700, theme))
+                .setFabImageTintColor(Color.WHITE)
+                .create()
+        )
+
+        speedDial.addActionItem(
+            SpeedDialActionItem.Builder(R.id.fab_info, R.drawable.ic_info)
+                .setLabel(getString(R.string.info))
+                .setFabBackgroundColor(ResourcesCompat.getColor(resources, R.color.teal_700, theme))
                 .setFabImageTintColor(Color.WHITE)
                 .create()
         )
 
         speedDial.setOnActionSelectedListener { actionItem ->
             when (actionItem.id) {
-                R.id.fab_home -> {
-                    showHome()
-                    speedDial.close()
-                    true
-                }
-                R.id.fab_favorites -> {
-                    showFavorites()
-                    speedDial.close()
-                    true
-                }
                 R.id.fab_donate -> {
                     showDonateDialog()
                     speedDial.close()
                     true
                 }
+
+                R.id.fab_info -> {
+                    showInfoDialog()
+                    speedDial.close()
+                    true
+                }
+
                 else -> false
             }
         }
     }
+
+    private fun showInfoDialog() {
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.app_info))
+            .setMessage(getString(R.string.app_description))
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
 
     private fun setupSearchFab() {
         binding.searchFab.setOnClickListener {

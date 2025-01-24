@@ -12,6 +12,9 @@
     <string name="favorites" />
     <string name="donate_archive" />
     <string name="donate_website" />
-    <string name="donate" />
+    <string name="donate"></string>
     <string name="donate_message" />
+    <string name="app_info" />
+    <string name="app_description" />
+    <string name="info"></string>
 </resources>
