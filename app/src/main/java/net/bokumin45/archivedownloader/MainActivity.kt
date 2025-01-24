@@ -393,21 +393,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             viewModel.displayState.value == DisplayState.CATEGORY -> {
-                val lastCategory = viewModel.getLastSelectedCategory()
-                if (lastCategory?.name == "latest") {
-                    showHome()
-                } else if (lastCategory?.parent == "latest") {
-                    viewModel.selectCategory(
-                        ArchiveCategory(
-                            name = "latest",
-                            displayName = "Latest Updates",
-                            items = emptyList(),
-                            subCategories = emptyList()
-                        )
-                    )
-                } else {
-                    showHome()
-                }
+                showHome()
             }
 
             viewModel.displayState.value != DisplayState.HOME -> {
@@ -415,7 +401,11 @@ class MainActivity : AppCompatActivity() {
             }
 
             else -> {
-                super.onBackPressed()
+                if (viewModel.getLastSelectedCategory()?.name == "latest") {
+                    showHome()
+                } else {
+                    super.onBackPressed()
+                }
             }
         }
     }
